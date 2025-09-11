@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# Adobe caches
+**/*Adobe*/
+*.idlk
+
+# Builds and misc
+*.log
+*.tmp
+*.swp
+.idea/
+.vscode/
+.env
+coverage/
+
+# Project outputs
+projects/*/06_exports/
+projects/*/08_archive/
