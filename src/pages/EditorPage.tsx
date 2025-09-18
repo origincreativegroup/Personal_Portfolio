@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ProjectFileExplorer from '../components/ProjectFileExplorer'
+import ProjectAssetEditor from '../components/projectdash'
 import { loadProject, saveProject } from '../utils/fileStore'
 import type { ProjectAsset, ProjectMeta } from '../intake/schema'
 
@@ -242,6 +243,58 @@ export default function EditorPage() {
     setAssetFeedback({ type: 'success', message: 'Asset removed from project.' })
   }
 
+  const handleAssetUpdate = (assetId: string, updates: Partial<ProjectAsset>) => {
+    if (!project) {
+      return
+    }
+
+    const updatedAssets = project.assets.map(asset =>
+      asset.id === assetId ? { ...asset, ...updates } : asset,
+    )
+
+    const timestamp = new Date().toISOString()
+    const updatedProject: ProjectMeta = {
+      ...project,
+      assets: updatedAssets,
+      updatedAt: timestamp,
+    }
+
+    saveProject(updatedProject)
+    setProject(updatedProject)
+    setAssetFeedback({ type: 'success', message: 'Asset details updated.' })
+  }
+
+  const handleAssetReorder = (assetId: string, direction: 'up' | 'down') => {
+    if (!project) {
+      return
+    }
+
+    const index = project.assets.findIndex(asset => asset.id === assetId)
+    if (index === -1) {
+      return
+    }
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= project.assets.length) {
+      return
+    }
+
+    const reordered = [...project.assets]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    const timestamp = new Date().toISOString()
+    const updatedProject: ProjectMeta = {
+      ...project,
+      assets: reordered,
+      updatedAt: timestamp,
+    }
+
+    saveProject(updatedProject)
+    setProject(updatedProject)
+    setAssetFeedback({ type: 'success', message: 'Asset order updated.' })
+  }
+
   const assetCount = project?.assets.length ?? 0
   const lastUpdated = project?.updatedAt ? new Date(project.updatedAt).toLocaleString() : null
 
@@ -461,47 +514,12 @@ export default function EditorPage() {
             </div>
           )}
 
-          {project.assets.length === 0 ? (
-            <div className="editor-assets__empty">
-              <p>No assets yet. Upload renders, documents, or media to keep everything together.</p>
-            </div>
-          ) : (
-            <ul className="editor-assets__list">
-              {project.assets.map(asset => {
-                const isImage = asset.mimeType.startsWith('image/')
-                return (
-                  <li key={asset.id} className="editor-assets__item">
-                    <div className="editor-assets__preview">
-                      {isImage ? (
-                        <img src={asset.dataUrl} alt={asset.name} />
-                      ) : (
-                        <span className="editor-assets__icon">{asset.mimeType.split('/')[0].toUpperCase()}</span>
-                      )}
-                    </div>
-                    <div className="editor-assets__meta">
-                      <strong>{asset.name}</strong>
-                      <span>
-                        {formatBytes(asset.size)} • Added{' '}
-                        {new Date(asset.addedAt).toLocaleDateString()} 
-                      </span>
-                    </div>
-                    <div className="editor-assets__actions">
-                      <a href={asset.dataUrl} download={asset.name} className="button button--ghost button--small">
-                        Download
-                      </a>
-                      <button
-                        type="button"
-                        className="button button--ghost button--danger button--small"
-                        onClick={() => handleAssetRemove(asset.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          <ProjectAssetEditor
+            assets={project.assets}
+            onAssetUpdate={handleAssetUpdate}
+            onAssetRemove={handleAssetRemove}
+            onAssetReorder={handleAssetReorder}
+          />
         </section>
 
         <section className="editor-page__card editor-page__card--files">
