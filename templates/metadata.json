@@ -1,0 +1,12 @@
+{
+  "title": "<Project Title>",
+  "client": "<Client>",
+  "type": "<Type/Category>",
+  "year": "<Year>",
+  "tags": [],
+  "status": "planning",
+  "notes": "",
+  "narrative_hook": "",
+  "ip_status": "",
+  "skus": []
+}

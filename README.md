@@ -1,35 +1,51 @@
-# Creative Projects Repository
+# Personal Portfolio Repo
 
-This repository organizes multidisciplinary creative work—design, video, web, audio, and more—into a consistent, version-controlled structure. It includes templates, documentation, and automation scripts to standardize how projects are started and delivered.
+Deployment-ready scaffold generated on 2025-09-18 14:10.
 
-## Quick Start (10 min)
-1. Install [Git LFS](https://git-lfs.com/) and run `git lfs install` once.
-2. Clone the repo and pull LFS objects:
-   ```bash
-   git clone <repo-url>
-   git lfs pull
-   ```
-3. Ensure Python 3 is available for helper scripts.
-4. Scaffold a project:
-   ```bash
-   python tools/new_project.py --client "Acme" --title "Spring Launch" --type social --due 2024-05-01 --owner "You"
-   ```
-5. Commit new work following the provided templates and checklists.
+## Quick Start
 
-## Repository Layout
-Key directories:
-- `docs/` – operations guides and playbooks.
-- `templates/` – starting points for briefs, checklists, and metadata.
-- `tools/` – automation scripts such as the project scaffold generator.
-- `brand/` – reusable brand assets (no licensed source files).
-- `shared_assets/` – music, SFX, stock references, and LUTs.
-- `projects/` – all dated client projects generated via `new_project.py`.
+```bash
+# 1) Create a new repo locally
+git init
+git lfs install
 
-For details on workflows, approvals, and naming conventions, see [`docs/GUIDE.CreativeOps.md`](docs/GUIDE.CreativeOps.md).
+# 2) Ensure LFS tracks common binaries (already configured)
+git add .gitattributes
 
-## LFS Setup
-Binary design and media formats are tracked with Git LFS. Confirm it is installed before committing large assets. Patterns are defined in `.gitattributes`.
+# 3) Create your first project
+python scripts/new_project.py \
+  --title "Spring Launch" \
+  --client "Acme" \
+  --type "Social" \
+  --year 2025 \
+  --tags "branding,video" \
+  --status "in-progress"
 
-## Contributing
-Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) before submitting changes. Use issue and PR templates for all work.
+# 4) Commit and publish
+git add .
+git commit -m "Initial commit: scaffold + first project"
+# Create a repo on GitHub/GitLab, then:
+git remote add origin <YOUR-REMOTE-URL>
+git push -u origin main
+```
 
+## Structure
+
+- `brand/` — global branding assets (logos, palettes, guidelines)
+- `docs/` — SOPs, workflows, style guides
+- `shared_assets/` — reusable media (fonts, logos, LUTs, music, SFX)
+- `templates/` — `brief.md`, `checklist.md`, `metadata.json`
+- `projects/` — one folder per project created by `new_project.py`
+- `scripts/` — automation utilities
+
+## new_project.py
+
+Creates a standardized folder structure and seeds brief + metadata for each new project.
+
+**Usage:**
+
+```bash
+python scripts/new_project.py --title "Project X" --client "Client" --type "Branding" --year 2025 --tags "nyx,merch"
+```
+
+Run `python scripts/new_project.py -h` for full options.
