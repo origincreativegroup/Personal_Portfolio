@@ -1,6 +1,6 @@
 // src/App.tsx
 import React from 'react'
-import PortfolioEditor from './components/portfolio-editor'
+import PortfolioEditor from './components/portfolioeditor'
 
 function App() {
   return (
