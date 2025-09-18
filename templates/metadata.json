@@ -1,12 +1,44 @@
 {
+  "schema_version": "2.0.0",
   "title": "<Project Title>",
-  "client": "<Client>",
-  "type": "<Type/Category>",
-  "year": "<Year>",
-  "tags": [],
-  "status": "planning",
-  "notes": "",
-  "narrative_hook": "",
-  "ip_status": "",
-  "skus": []
+  "organization": "<Org>",
+  "work_type": "Employment|Freelance|Personal",
+  "year": "<YYYY>",
+  "role": "<Role>",
+  "seniority": "Lead|Contributor",
+  "categories": [
+    "Branding",
+    "Web"
+  ],
+  "skills": [
+    "ui",
+    "prototyping"
+  ],
+  "tools": [
+    "Figma",
+    "Illustrator"
+  ],
+  "tags": [
+    "branding",
+    "video"
+  ],
+  "highlights": [
+    "impact bullet 1",
+    "impact bullet 2"
+  ],
+  "links": {
+    "live": "",
+    "repo": "",
+    "video": ""
+  },
+  "privacy": {
+    "nda": false
+  },
+  "case": {
+    "problem": "<...>",
+    "actions": "<...>",
+    "results": "<...>"
+  },
+  "cover_image": "cover.jpg",
+  "created_at": "<auto>"
 }

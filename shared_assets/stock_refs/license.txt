@@ -1,1 +1,0 @@
-Include license details for stock references placed in this folder.

@@ -1,39 +1,20 @@
-# Creative Brief
+# <Project Title>
 
-## Project Title
-{title}
+**Organization:** <Org>  
+**Year:** <YYYY>  
+**Role:** <Role> (<Lead|Contributor>)  
+**Categories:** <Branding, Web, ...>
 
-## Client / Brand
-{client}
+## Problem
+<What was broken or missing?>
 
-## Overview
-<One paragraph on the story and goal.>
+## Actions
+<What did you do? Focus on your contribution.>
 
-## Objectives
-- Primary:
-- Secondary:
+## Results
+<Impact in plain language. Add numbers if you have them.>
 
-## Audience
-- Who are we speaking to?
-- What do they care about?
-
-## Deliverables
-- List outputs and formats
-
-## Timeline & Milestones
-- Kickoff:
-- First pass:
-- Final:
-
-## Channels / Formats
-- Social, Web, Print, OOH, etc.
-
-## Success Metrics
-- How will we know we succeeded?
-
-## Stakeholders
-- Owner:
-- Reviewers:
-
-## References / Inspiration
-- Links, moodboards
+## Highlights
+- <One-liner impact>
+- <Outcome with a number>
+- <Interesting detail>
