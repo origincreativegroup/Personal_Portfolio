@@ -3,6 +3,7 @@ import React from 'react'
 import { Link, Route, Routes, Navigate } from 'react-router-dom'
 import IntakePage from './pages/IntakePage'
 import EditorPage from './pages/EditorPage'
+import PortfolioForgeAIAnalysis from './pages/PortfolioForgeAIAnalysis'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <nav className="app-nav">
             <Link to="/intake" className="app-nav__link">New project</Link>
             <Link to={{ pathname: '/intake', hash: '#saved-projects' }} className="app-nav__link">Saved projects</Link>
+            <Link to="/analysis" className="app-nav__link">AI analysis</Link>
           </nav>
         </div>
       </header>
@@ -25,6 +27,7 @@ function App() {
           <Route path="/" element={<Navigate to="/intake" replace />} />
           <Route path="/intake" element={<IntakePage />} />
           <Route path="/editor/:slug" element={<EditorPage />} />
+          <Route path="/analysis" element={<PortfolioForgeAIAnalysis />} />
         </Routes>
       </main>
     </div>
