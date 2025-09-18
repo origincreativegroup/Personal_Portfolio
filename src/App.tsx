@@ -1,16 +1,31 @@
 // src/App.tsx
 import React from 'react'
-import PortfolioEditor from './components/portfolioeditor'
+import { Link, Route, Routes, Navigate } from 'react-router-dom'
+import IntakePage from './pages/IntakePage'
+import EditorPage from './pages/EditorPage'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="p-4 bg-blue-600 text-white shadow">
-        <h1 className="text-2xl font-bold">Portfolio Intake</h1>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="app-header__inner">
+          <div>
+            <p className="app-header__eyebrow">Workflow</p>
+            <h1 className="app-header__title">Portfolio Intake</h1>
+          </div>
+          <nav className="app-nav">
+            <Link to="/intake" className="app-nav__link">New project</Link>
+            <Link to={{ pathname: '/intake', hash: '#saved-projects' }} className="app-nav__link">Saved projects</Link>
+          </nav>
+        </div>
       </header>
 
-      <main className="p-4">
-        <PortfolioEditor />
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<Navigate to="/intake" replace />} />
+          <Route path="/intake" element={<IntakePage />} />
+          <Route path="/editor/:slug" element={<EditorPage />} />
+        </Routes>
       </main>
     </div>
   )
