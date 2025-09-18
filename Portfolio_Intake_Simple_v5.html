@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple Portfolio Intake → Repo ZIP (v5)</title>
+<style>
+  :root { --bg:#fafafa; --text:#111827; --muted:#6b7280; --accent:#7c3aed; --panel:#fff; --border:#e5e7eb; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:0 4px 28px rgba(0,0,0,.06);margin-bottom:16px}
+  h1{margin:0 0 4px;font-size:22px} .sub{color:var(--muted);font-size:13px}
+  h2{font-size:14px;text-transform:uppercase;color:var(--muted);margin:0 0 10px;letter-spacing:.08em}
+  .row{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+  .col-12{grid-column:span 12}.col-6{grid-column:span 6}.col-4{grid-column:span 4}
+  label{display:block;font-size:13px;margin-bottom:6px}
+  input[type="text"],input[type="number"],input[type="date"],textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fff}
+  textarea{min-height:80px;resize:vertical}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb;cursor:pointer;font-size:12px}
+  .chip.on{background:#ede9fe;border-color:#c4b5fd}
+  .drop{border:1.5px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;background:#fff}
+  .drop:hover{border-color:var(--accent)} .files{font-size:12px;color:var(--muted);margin-top:6px;max-height:140px;overflow:auto;text-align:left}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .btn{appearance:none;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;background:#ede9fe;color:#4c1d95;border:1px solid #ddd6fe;font-weight:600}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .switch{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+  .msg{margin-top:8px;font-size:13px}.ok{color:#047857}.err{color:#b91c1c}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Simple Portfolio Intake</h1>
+    <div class="sub">Minimal clicks. Just the essentials an LLM needs to assemble a portfolio, case studies, and resume bullets.</div>
+  </div>
+
+  <div class="card">
+    <h2>Basics</h2>
+    <div class="row">
+      <div class="col-12"><label>Project Title *</label><input id="title" type="text" placeholder="e.g., Spring Launch" required></div>
+      <div class="col-6"><label>Organization / Client</label><input id="org" type="text" placeholder="Caribbean Pools &amp; Spas"></div>
+      <div class="col-3"><label>Work Type</label><select id="workType"><option>Employment</option><option>Freelance</option><option>Personal</option></select></div>
+      <div class="col-3"><label>Year (YYYY)</label><input id="year" type="number" placeholder="2025"></div>
+      <div class="col-6"><label>Role (primary)</label><input id="role" type="text" placeholder="Designer, Developer, Art Director"></div>
+      <div class="col-6"><label>Seniority</label><select id="seniority"><option>Lead</option><option>Contributor</option></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Skills & Tools</h2>
+    <div class="row">
+      <div class="col-12"><label>Categories</label><div id="cat" class="chips"></div></div>
+      <div class="col-12"><label>Skills</label><div id="skill" class="chips"></div></div>
+      <div class="col-12"><label>Tools</label><div id="tool" class="chips"></div><div class="hint">Other tools: <input id="toolsOther" type="text" placeholder="comma-separated" style="margin-left:6px;width:60%"></div></div>
+      <div class="col-12"><label>Tags</label><div id="tag" class="chips"></div><div class="actions"><button class="btn" id="regenTags">Regenerate</button><button class="btn" id="clearTags">Clear</button></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Case Study (short)</h2>
+    <div class="row">
+      <div class="col-12"><label>Problem</label><textarea id="problem" placeholder="What was the challenge?"></textarea></div>
+      <div class="col-12"><label>Actions</label><textarea id="actions" placeholder="What did you do? Focus on your contribution."></textarea></div>
+      <div class="col-12"><label>Results</label><textarea id="results" placeholder="Outcomes and any metrics."></textarea></div>
+      <div class="col-12"><label>Highlights (up to 3 bullets)</label><input id="h1" type="text" placeholder="Bullet 1"><input id="h2" type="text" placeholder="Bullet 2" style="margin-top:6px"><input id="h3" type="text" placeholder="Bullet 3" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Links & Privacy</h2>
+    <div class="row">
+      <div class="col-4"><label>Live URL</label><input id="linkLive" type="text" placeholder="https://..."></div>
+      <div class="col-4"><label>Repo URL</label><input id="linkRepo" type="text" placeholder="https://github.com/..."></div>
+      <div class="col-4"><label>Video URL</label><input id="linkVideo" type="text" placeholder="https://youtu.be/..."></div>
+      <div class="col-12"><label class="switch"><input type="checkbox" id="nda"> NDA / keep private</label></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Uploads (1 bucket) + Cover</h2>
+    <div class="row">
+      <div class="col-12">
+        <label>Uploads (any files)</label>
+        <div class="drop" data-target="files"><input type="file" multiple></div>
+        <div class="files" id="files-files"></div>
+        <div class="hint">We’ll auto-route: images → assets/images, video → assets/video, docs → assets/docs, everything else → assets/other.</div>
+      </div>
+      <div class="col-12">
+        <label>Thumbnail / Hero (saved as cover.jpg)</label>
+        <div class="drop" data-target="cover"><input type="file" accept="image/*"></div>
+        <div class="files" id="files-cover"></div>
+      </div>
+      <div class="col-12 actions"><label class="switch"><input type="checkbox" id="includeScaffold"> Include minimal repo scaffold (.gitattributes, templates/brief.md)</label></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button class="btn primary" id="export">Export Repo ZIP</button>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+    <div id="m" class="msg ok" style="display:none">ZIP generated.</div>
+    <div id="e" class="msg err" style="display:none"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script>
+(()=>{
+  const $=s=>document.querySelector(s);
+  const CHIPS={
+    cat:['Branding','Web','E‑commerce','Social','Video','Photo','Print','Signage','Data','Automation','Training','Other'],
+    skill:['strategy','typography','layout','illustration','motion','video-editing','ui','ux','prototyping','data-viz','scripting','crm','email'],
+    tool:['Illustrator','Photoshop','InDesign','After Effects','Premiere Pro','Figma','Blender','DaVinci','Lightroom','Audition','Python','Webflow','Mailchimp']
+  };
+  const AUTOTAGS={Branding:['branding','logo'],Web:['web','ui'],E‑commerce:['ecommerce','retail'],Social:['social','content'],Video:['video'],Photo:['photo'],Print:['print'],Signage:['signage'],Data:['analytics'],Automation:['automation'],Training:['training']};
+
+  function chipify(id, items){
+    const el=$("#"+id); el.innerHTML="";
+    items.forEach(name=>{
+      const s=document.createElement("span"); s.className="chip"; s.textContent=name; s.dataset.value=name;
+      s.addEventListener("click", ()=>s.classList.toggle("on")); el.appendChild(s);
+    });
+  }
+  chipify("cat", CHIPS.cat); chipify("skill", CHIPS.skill); chipify("tool", CHIPS.tool);
+  function selected(id){ return Array.from($("#"+id).querySelectorAll(".chip.on")).map(x=>x.dataset.value); }
+
+  // Tags (auto from chips)
+  function regenTags(){
+    const cats=selected("cat"), roles=[$("#role").value.trim()].filter(Boolean), tools=selected("tool");
+    let tags=[];
+    cats.forEach(c=>(AUTOTAGS[c]||[]).forEach(t=>tags.push(t)));
+    roles.forEach(r=>tags.push(r.toLowerCase().replace(/\s+/g,'-')));
+    tools.forEach(t=>tags.push(t.toLowerCase().replace(/\s+/g,'-')));
+    tags=Array.from(new Set(tags));
+    const tag=$("#tag"); tag.innerHTML="";
+    tags.forEach(t=>{ const s=document.createElement("span"); s.className="chip on"; s.dataset.value=t; s.textContent=t; s.addEventListener("click", ()=>s.classList.toggle("on")); tag.appendChild(s); });
+  }
+  $("#regenTags").addEventListener("click", e=>{e.preventDefault(); regenTags();});
+  $("#clearTags").addEventListener("click", e=>{e.preventDefault(); $("#tag").innerHTML="";});
+
+  // Files
+  const files={ files:[], cover:null };
+  function list(target){
+    const box=$("#files-"+target);
+    box.innerHTML = target==="cover" ? (files.cover?("• "+files.cover.name):"") : files.files.map(f=>"• "+f.name).join("<br>");
+  }
+  document.querySelectorAll(".drop").forEach(zone=>{
+    const input=zone.querySelector("input[type=file]"); const target=zone.dataset.target;
+    zone.addEventListener("click", ()=>input.click());
+    zone.addEventListener("dragover", e=>{e.preventDefault(); zone.style.borderColor="#7c3aed";});
+    zone.addEventListener("dragleave", ()=>{zone.style.borderColor="var(--border)";});
+    zone.addEventListener("drop", e=>{e.preventDefault(); zone.style.borderColor="var(--border)"; const arr=Array.from(e.dataTransfer.files||[]); if(target==="cover"){files.cover=arr[0]||null;} else {files.files.push(...arr);} list(target);});
+    input.addEventListener("change", e=>{const arr=Array.from(e.target.files||[]); if(target==="cover"){files.cover=arr[0]||null;} else {files.files.push(...arr);} input.value=""; list(target);});
+  });
+
+  function slug(s,max){ if(!s)return""; s=s.trim().toLowerCase().replace(/[^\w\s\-]+/g,'').replace(/\s+/g,'-').replace(/^[-_]+|[-_]+$/g,''); return max? s.slice(0,max):s; }
+  function ext(name){ const m=/\.\w+$/.exec(name||""); return m? m[0].slice(1).toLowerCase():""; }
+
+  async function coverToJpegBlob(file){
+    if(!file) return null;
+    const img = await createImageBitmap(file);
+    const c=document.createElement("canvas"); c.width=img.width; c.height=img.height;
+    const ctx=c.getContext("2d"); ctx.drawImage(img,0,0);
+    return await new Promise(res=>c.toBlob(res,"image/jpeg",0.9));
+  }
+
+  $("#reset").addEventListener("click", e=>{
+    e.preventDefault();
+    ["title","org","year","role","toolsOther","h1","h2","h3","linkLive","linkRepo","linkVideo","problem","actions","results"].forEach(id=>{$("#"+id).value="";});
+    $("#workType").selectedIndex=0; $("#seniority").selectedIndex=0; $("#nda").checked=false;
+    ["cat","skill","tool","tag"].forEach(id=>Array.from($("#"+id).children).forEach(ch=>ch.classList.remove("on")));
+    files.files=[]; files.cover=null; list("files"); list("cover");
+    $("#m").style.display="none"; $("#e").style.display="none";
+  });
+
+  $("#export").addEventListener("click", async ()=>{
+    const M=$("#m"), E=$("#e"); M.style.display="none"; E.style.display="none";
+    const title=$("#title").value.trim(); if(!title){E.textContent="Project Title is required."; E.style.display="block"; return;}
+    const org=$("#org").value.trim(); const workType=$("#workType").value; let year=($("#year").value||"").trim(); if(!/^\d{4}$/.test(year)) year=(new Date()).getFullYear().toString();
+    const role=$("#role").value.trim(); const seniority=$("#seniority").value;
+    const categories=selected("cat"); const skills=selected("skill"); let tools=selected("tool");
+    const toolsOther=($("#toolsOther").value||"").split(",").map(s=>s.trim()).filter(Boolean); tools=Array.from(new Set([...tools, ...toolsOther]));
+    const tags=Array.from($("#tag").querySelectorAll(".chip.on")).map(x=>x.dataset.value);
+    const problem=$("#problem").value.trim(); const actions=$("#actions").value.trim(); const results=$("#results").value.trim();
+    const highlights=[$("#h1").value.trim(),$("#h2").value.trim(),$("#h3").value.trim()].filter(Boolean);
+    const links={ live:$("#linkLive").value.trim(), repo:$("#linkRepo").value.trim(), video:$("#linkVideo").value.trim() };
+    const privacy={ nda: $("#nda").checked };
+    const folder=[year, slug(org||"personal",24), slug(title,36)||"untitled"].filter(Boolean).join("_");
+    const root=`projects/${folder}`;
+
+    try{
+      const zip=new JSZip();
+
+      // minimal scaffold (optional)
+      if($("#includeScaffold").checked){
+        const readme=`# Minimal Portfolio Repo\n\n- Drop new project folders under \`projects/\`.\n- Track media with Git LFS.\n- Use \`templates/brief.md\` as a starting point.\n`;
+        zip.file("README.md", readme);
+        zip.file(".gitignore", ".DS_Store\n__pycache__/\n");
+        const gattr = [
+          "*.png filter=lfs diff=lfs merge=lfs -text",
+          "*.jpg filter=lfs diff=lfs merge=lfs -text",
+          "*.jpeg filter=lfs diff=lfs merge=lfs -text",
+          "*.mp4 filter=lfs diff=lfs merge=lfs -text",
+          "*.mov filter=lfs diff=lfs merge=lfs -text",
+          "*.psd filter=lfs diff=lfs merge=lfs -text",
+          "*.ai filter=lfs diff=lfs merge=lfs -text",
+        ].join("\n");
+        zip.file(".gitattributes", gattr+"\n");
+        zip.file("templates/brief.md", "# Brief Template\n\n## Goal\n## Audience\n## Deliverables\n");
+        zip.folder("projects").file(".keep","");
+      }
+
+      // project dirs
+      ["assets/images","assets/video","assets/docs","assets/other","deliverables"].forEach(p=>zip.folder(`${root}/${p}`).file(".keep",""));
+
+      // cover
+      let coverPath="";
+      if(files.cover){
+        const b = await coverToJpegBlob(files.cover);
+        zip.file(`${root}/cover.jpg`, b);
+        coverPath = "cover.jpg";
+      }
+
+      // metadata.json
+      const metadata = {
+        schema_version: "2.0.0",
+        title, organization: org, work_type: workType, year, role, seniority,
+        categories, skills, tools, tags, highlights, links, privacy,
+        case: { problem, actions, results },
+        cover_image: coverPath,
+        created_at: new Date().toISOString()
+      };
+      zip.file(`${root}/metadata.json`, JSON.stringify(metadata, null, 2));
+
+      // brief.md (compact)
+      const brief = [
+        `# ${title}`,
+        org? `**Organization:** ${org}  `:"",
+        `**Year:** ${year}  `,
+        `**Role:** ${role} (${seniority})  `,
+        categories.length? `**Categories:** ${categories.join(", ")}`:"",
+        "",
+        "## Problem", problem || "*—*","",
+        "## Actions", actions || "*—*","",
+        "## Results", results || "*—*","",
+        highlights.length? "## Highlights\n- "+highlights.join("\n- "):""
+      ].join("\n");
+      zip.file(`${root}/brief.md`, brief);
+
+      // route uploads
+      for(const f of files.files){
+        const t=f.type||""; const e=ext(f.name);
+        let dest="assets/other";
+        if(t.startsWith("image/") || ["png","jpg","jpeg","gif","webp","svg","tif","tiff"].includes(e)) dest="assets/images";
+        else if(t.startsWith("video/") || ["mp4","mov","mxf","avi","mkv","wmv","prores"].includes(e)) dest="assets/video";
+        else if(["pdf","doc","docx","md","txt","rtf","ppt","pptx","key","xls","xlsx","csv"].includes(e)) dest="assets/docs";
+        const buf=await f.arrayBuffer();
+        zip.file(`${root}/${dest}/${f.name}`, buf);
+      }
+
+      const blob=await zip.generateAsync({type:"blob"});
+      saveAs(blob, `${folder}.zip`);
+      M.textContent="ZIP generated. Drop into your repo and commit."; M.style.display="block";
+    }catch(err){ E.textContent = err.message || "Failed to build ZIP."; E.style.display="block"; }
+  });
+})();
+</script>
+</body>
+</html>
