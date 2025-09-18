@@ -1,0 +1,128 @@
+// ===== DATABASE MODELS =====
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  projects    Project[]
+  
+  @@map("users")
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  category     String?
+  template     String?
+  color        String   @default("#5a3cf4")
+  visibility   String   @default("private")
+  featured     Boolean  @default(false)
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files        ProjectFile[]
+  analysis     ProjectAnalysis?
+  
+  @@map("projects")
+}
+
+model ProjectFile {
+  id           String   @id @default(cuid())
+  name         String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  thumbnailUrl String?
+  description  String?
+  tags         String[]
+  featured     Boolean  @default(false)
+  order        Int      @default(0)
+  projectId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis     FileAnalysis?
+  
+  @@map("project_files")
+}
+
+model ProjectAnalysis {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  status           String   @default("pending") // pending, analyzing, completed, failed
+  confidence       Float?
+  processingTime   Float?
+  filesAnalyzed    Int      @default(0)
+  insightsFound    Int      @default(0)
+  
+  // Problem Analysis
+  primaryProblem   String?
+  problemConfidence Float?
+  problemEvidence  Json?
+  problemAlternatives Json?
+  
+  // Solution Analysis  
+  primarySolution  String?
+  solutionConfidence Float?
+  solutionElements Json?
+  designPatterns   String[]
+  
+  // Impact Analysis
+  primaryImpact    String?
+  impactConfidence Float?
+  metrics          Json?
+  businessValue    String?
+  
+  // Narrative
+  story           String?
+  challenges      String[]
+  process         String[]
+  
+  // Suggestions
+  suggestedTitle   String?
+  suggestedCategory String?
+  suggestedTags    String[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("project_analyses")
+}
+
+model FileAnalysis {
+  id           String   @id @default(cuid())
+  fileId       String   @unique
+  status       String   @default("pending")
+  contentType  String?
+  insights     Json?
+  extractedText String?
+  metadata     Json?
+  processingTime Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  @@map("file_analyses")
+}
