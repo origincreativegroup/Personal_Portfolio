@@ -67,7 +67,7 @@ export default function EditorPage() {
         </section>
 
         <section className="editor-page__card editor-page__card--files">
-          <ProjectFileExplorer projectSlug={slug} />
+          <ProjectFileExplorer projectSlug={slug} projectTitle={meta.title} />
         </section>
 
         <section className="editor-page__card editor-page__card--placeholder">
