@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,7 +13,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { newProject, type ProjectMeta } from './schema'
+import { newProject, type ProjectAsset, type ProjectMeta } from './schema'
 import './IntakeForm.css'
 
 type Props = { onComplete(meta: ProjectMeta): void }
@@ -23,6 +23,7 @@ type UploadedFile = {
   size: number
   type: string
   preview: string | null
+  dataUrl: string | null
 }
 
 const steps = ['Upload File', 'Choose Project', 'Fill Template', 'Review & Publish']
@@ -67,14 +68,6 @@ export default function IntakeForm({ onComplete }: Props) {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  useEffect(() => {
-    return () => {
-      if (uploadedFile?.preview) {
-        URL.revokeObjectURL(uploadedFile.preview)
-      }
-    }
-  }, [uploadedFile])
-
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setDragOver(false)
@@ -85,17 +78,27 @@ export default function IntakeForm({ onComplete }: Props) {
   const handleFileSelect = (file?: File) => {
     if (!file) return
 
-    setUploadedFile(prev => {
-      if (prev?.preview) {
-        URL.revokeObjectURL(prev.preview)
-      }
-      return {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : null
+      setUploadedFile({
         name: file.name,
         size: file.size,
         type: file.type,
-        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
-      }
-    })
+        preview: file.type.startsWith('image/') && result ? result : null,
+        dataUrl: result,
+      })
+    }
+    reader.onerror = () => {
+      setUploadedFile({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        preview: null,
+        dataUrl: null,
+      })
+    }
+    reader.readAsDataURL(file)
     setCurrentStep(1)
   }
 
@@ -117,12 +120,7 @@ export default function IntakeForm({ onComplete }: Props) {
   const resetFlow = () => {
     setCurrentStep(0)
     setDragOver(false)
-    setUploadedFile(prev => {
-      if (prev?.preview) {
-        URL.revokeObjectURL(prev.preview)
-      }
-      return null
-    })
+    setUploadedFile(null)
     setSelectedProject('')
     setFormData(initialFormState)
   }
@@ -140,6 +138,25 @@ export default function IntakeForm({ onComplete }: Props) {
     if (!selectedProject) return ''
     if (selectedProject === 'new') return 'New Project'
     return projectOptions.find(option => option.id === selectedProject)?.name ?? ''
+  }
+
+  const createAssetFromUpload = (file: UploadedFile): ProjectAsset | null => {
+    if (!file.dataUrl) {
+      return null
+    }
+
+    const identifier = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `asset-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+    return {
+      id: identifier,
+      name: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+      dataUrl: file.dataUrl,
+      addedAt: new Date().toISOString(),
+    }
   }
 
   const handlePublish = () => {
@@ -177,8 +194,10 @@ export default function IntakeForm({ onComplete }: Props) {
         })}`,
       )
     }
+    let primaryAsset: ProjectAsset | null = null
     if (uploadedFile) {
       outcomes.push(`Primary asset: ${uploadedFile.name}`)
+      primaryAsset = createAssetFromUpload(uploadedFile)
     }
     meta.outcomes = outcomes.join(' • ')
 
@@ -196,6 +215,10 @@ export default function IntakeForm({ onComplete }: Props) {
     }
     if (technologies.length > 0) {
       meta.technologies = technologies
+    }
+
+    if (primaryAsset) {
+      meta.assets = [primaryAsset]
     }
 
     onComplete(meta)
