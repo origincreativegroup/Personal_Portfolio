@@ -34,3 +34,4 @@ coverage/
 # Project outputs
 projects/*/06_exports/
 projects/*/08_archive/
+portfolio-intake/package-lock.json
