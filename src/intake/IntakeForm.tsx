@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useId, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -65,8 +65,12 @@ export default function IntakeForm({ onComplete }: Props) {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [selectedProject, setSelectedProject] = useState('')
   const [formData, setFormData] = useState(initialFormState)
+  const [liveMessage, setLiveMessage] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const dropzoneDescriptionId = useId()
+  const dropzoneHintId = useId()
+  const dropzoneHelpId = useId()
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -76,7 +80,14 @@ export default function IntakeForm({ onComplete }: Props) {
   }
 
   const handleFileSelect = (file?: File) => {
-    if (!file) return
+    if (!file) {
+      setLiveMessage('No file selected. You can continue without an upload.')
+      return
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
 
     const reader = new FileReader()
     reader.onload = () => {
@@ -88,6 +99,8 @@ export default function IntakeForm({ onComplete }: Props) {
         preview: file.type.startsWith('image/') && result ? result : null,
         dataUrl: result,
       })
+      setCurrentStep(1)
+      setLiveMessage(`${file.name} ready to add. Continue to choose a project.`)
     }
     reader.onerror = () => {
       setUploadedFile({
@@ -97,9 +110,10 @@ export default function IntakeForm({ onComplete }: Props) {
         preview: null,
         dataUrl: null,
       })
+      setCurrentStep(1)
+      setLiveMessage(`Unable to preview ${file.name}. You can still continue to add project details.`)
     }
     reader.readAsDataURL(file)
-    setCurrentStep(1)
   }
 
   const handleInputChange = (field: keyof typeof initialFormState, value: string) => {
@@ -123,6 +137,7 @@ export default function IntakeForm({ onComplete }: Props) {
     setUploadedFile(null)
     setSelectedProject('')
     setFormData(initialFormState)
+    setLiveMessage('')
   }
 
   const formatFileSize = (bytes: number) => {
@@ -224,6 +239,22 @@ export default function IntakeForm({ onComplete }: Props) {
     onComplete(meta)
   }
 
+  const handleSkipUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    setUploadedFile(null)
+    setCurrentStep(1)
+    setLiveMessage('Upload skipped. You can add assets later from the editor.')
+  }
+
+  const handleDropzoneKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (['Enter', ' ', 'Space', 'Spacebar'].includes(event.key)) {
+      event.preventDefault()
+      fileInputRef.current?.click()
+    }
+  }
+
   return (
     <div className="upload-flow">
       <header className="upload-flow__header">
@@ -297,11 +328,15 @@ export default function IntakeForm({ onComplete }: Props) {
               }}
               onDragLeave={() => setDragOver(false)}
               onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={handleDropzoneKeyDown}
+              aria-describedby={`${dropzoneDescriptionId} ${dropzoneHintId} ${dropzoneHelpId}`}
             >
               <Upload size={42} className="upload-flow__dropzone-icon" />
-              <h3>{dragOver ? 'Drop your file here' : 'Drag & drop or click to upload'}</h3>
-              <p>Supports JPG, PNG, PDF, MP4 and more.</p>
-              <small>Maximum file size: 50MB</small>
+              <h3 id={dropzoneDescriptionId}>{dragOver ? 'Drop your file here' : 'Drag & drop or click to upload'}</h3>
+              <p id={dropzoneHintId}>Supports JPG, PNG, PDF, MP4 and more.</p>
+              <small id={dropzoneHelpId}>Maximum file size: 50MB</small>
             </div>
 
             <input
@@ -320,6 +355,12 @@ export default function IntakeForm({ onComplete }: Props) {
               <button type="button" className="upload-flow__option-btn" onClick={() => fileInputRef.current?.click()}>
                 <FileText size={24} />
                 <span>Browse documents</span>
+              </button>
+            </div>
+
+            <div className="upload-flow__helper-actions">
+              <button type="button" className="upload-flow__secondary-button" onClick={handleSkipUpload}>
+                Skip for now
               </button>
             </div>
           </div>
@@ -599,6 +640,10 @@ export default function IntakeForm({ onComplete }: Props) {
           </div>
         )}
       </main>
+
+      <div className="upload-flow__sr-only" aria-live="polite" role="status">
+        {liveMessage}
+      </div>
     </div>
   )
 }
