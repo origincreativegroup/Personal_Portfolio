@@ -7,6 +7,7 @@ export type ProjectAsset = {
   addedAt: string
   description?: string
   isHeroImage?: boolean // For thumbnail/hero image picker
+  thumbnailUrl?: string | null
 }
 
 export type ProjectStatus = 'draft' | 'cast' | 'published'

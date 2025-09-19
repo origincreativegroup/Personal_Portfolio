@@ -26,6 +26,7 @@ import {
   type ProjectLink
 } from './schema'
 import './IntakeForm.css'
+import { generateVideoThumbnail } from '../utils/videoThumbnails'
 
 type Props = { onComplete(meta: ProjectMeta): void }
 
@@ -35,6 +36,7 @@ type UploadedFile = {
   type: string
   preview: string | null
   dataUrl: string | null
+  thumbnailUrl: string | null
 }
 
 const steps = ['Core Info', 'Narrative', 'Details', 'Review & Publish']
@@ -108,14 +110,25 @@ export default function IntakeForm({ onComplete }: Props) {
     }
 
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       const result = typeof reader.result === 'string' ? reader.result : null
+      let thumbnailUrl: string | null = null
+
+      if (file.type.startsWith('video/')) {
+        try {
+          thumbnailUrl = await generateVideoThumbnail(file)
+        } catch (error) {
+          console.warn('Unable to generate thumbnail for video asset', error)
+        }
+      }
+
       setUploadedFile({
         name: file.name,
         size: file.size,
         type: file.type,
         preview: file.type.startsWith('image/') && result ? result : null,
         dataUrl: result,
+        thumbnailUrl,
       })
       setFileError(null)
       setCurrentStep(1)
@@ -185,6 +198,7 @@ export default function IntakeForm({ onComplete }: Props) {
       size: file.size,
       dataUrl: file.dataUrl,
       addedAt: new Date().toISOString(),
+      thumbnailUrl: file.thumbnailUrl,
     }
   }
 

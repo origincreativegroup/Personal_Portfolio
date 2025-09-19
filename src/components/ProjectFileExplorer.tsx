@@ -46,6 +46,8 @@ type FileRecord = {
   uploadDate: string
   visibility: FileVisibility
   folder: string | null
+  previewUrl: string | null
+  thumbnailUrl?: string | null
 }
 
 type ActiveModal = 'move' | 'copy' | 'tag' | 'edit' | 'delete' | null
@@ -125,10 +127,19 @@ function normaliseTag(value: string): string {
 }
 
 function projectAssetToFileRecord(asset: ProjectAsset, projectSlug: string): FileRecord {
+  const normalizedMime = asset.mimeType?.toLowerCase() ?? ''
+  const inferredType: FileRecord['type'] = normalizedMime.startsWith('image/')
+    ? 'image'
+    : normalizedMime.startsWith('video/')
+      ? 'video'
+      : normalizedMime.startsWith('audio/')
+        ? 'audio'
+        : guessFileType(asset.name)
+
   return {
     id: asset.id,
     name: asset.name,
-    type: guessFileType(asset.name),
+    type: inferredType,
     size: formatBytes(asset.size),
     sizeBytes: asset.size,
     tags: [], // Assets don't have tags in the current schema
@@ -137,6 +148,12 @@ function projectAssetToFileRecord(asset: ProjectAsset, projectSlug: string): Fil
     uploadDate: new Date(asset.addedAt).toLocaleDateString(),
     visibility: 'public', // Default visibility
     folder: null, // Assets don't have folders currently
+    previewUrl: asset.mimeType.startsWith('image/')
+      ? asset.dataUrl
+      : asset.mimeType.startsWith('video/')
+        ? asset.thumbnailUrl ?? null
+        : null,
+    thumbnailUrl: asset.mimeType.startsWith('video/') ? asset.thumbnailUrl ?? null : null,
   }
 }
 
@@ -438,7 +455,18 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle, assets,
               </button>
             )}
             <div className="file-card__preview" aria-hidden="true">
-              <Icon size={28} />
+              {file.previewUrl ? (
+                <div className={`file-card__preview-media${file.type === 'video' ? ' file-card__preview-media--video' : ''}`}>
+                  <img src={file.previewUrl} alt="" />
+                  {file.type === 'video' && (
+                    <span className="file-card__preview-indicator">
+                      <Video size={16} />
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Icon size={28} />
+              )}
             </div>
             <div className="file-card__info">
               <div className="file-card__title-row">
