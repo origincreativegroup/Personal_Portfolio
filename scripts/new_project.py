@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, json, re, shutil
+import argparse, json, re, shutil, subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -99,6 +99,19 @@ def main():
     write(proj / "brief.md", "\n".join([line for line in brief if line != ""]))
 
     print(f"✅ Created {proj}")
+
+    try:
+        subprocess.run(
+            ["npm", "run", "sync", "--", "--project", folder],
+            cwd=ROOT / "server",
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        print("🔄 Project registered with sync service.")
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print("⚠️  Unable to register project with sync service:", exc)
+        print("   Run `cd server && npm run sync -- --project", folder, "` manually once dependencies are installed.")
 
 if __name__ == "__main__":
     main()

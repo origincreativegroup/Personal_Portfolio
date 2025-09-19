@@ -4,9 +4,9 @@ import { AnalysisResult, AnalysisInsight } from '../types/analysis';
 
 type ProjectWithFiles = {
   id: string;
-  name: string;
-  description: string | null;
-  category: string | null;
+  title: string;
+  summary: string | null;
+  workType: string | null;
   files: Array<{
     id: string;
     name: string;
@@ -154,9 +154,9 @@ export class AIAnalysisService {
     }
 
     return {
-      projectName: project.name,
-      projectDescription: project.description,
-      projectCategory: project.category,
+      projectName: project.title,
+      projectDescription: project.summary,
+      projectCategory: project.workType,
       allInsights,
       extractedTexts,
       fileMetadata,

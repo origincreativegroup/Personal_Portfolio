@@ -1,11 +1,20 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import analysisRoutes from './routes/analysis';
+import projectRoutes from './routes/projects';
+import ProjectSyncService from './services/projectSyncService';
+import { registerProjectSyncScheduler } from './jobs/projectSyncScheduler';
 
 const app = express();
 const prisma = new PrismaClient();
+const projectRoot = process.env.PROJECTS_ROOT ?? path.resolve(__dirname, '../..', 'projects');
+const projectSyncService = new ProjectSyncService(prisma, { projectRoot });
+
+app.locals.projectSyncService = projectSyncService;
+app.locals.prisma = prisma;
 
 app.use(cors());
 app.use(express.json());
@@ -27,11 +36,17 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 50 * 1024 * 1024
-  }
+    fileSize: 50 * 1024 * 1024,
+  },
 });
 
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/projects', projectRoutes(upload));
+
+registerProjectSyncScheduler({
+  service: projectSyncService,
+  intervalMs: Number(process.env.PROJECT_SYNC_INTERVAL_MS ?? 5 * 60 * 1000),
+});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

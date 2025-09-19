@@ -23,23 +23,84 @@ model User {
 }
 
 model Project {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  category     String?
-  template     String?
-  color        String   @default("#5a3cf4")
-  visibility   String   @default("private")
-  featured     Boolean  @default(false)
-  userId       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files        ProjectFile[]
-  analysis     ProjectAnalysis?
-  
+  id                String   @id @default(cuid())
+  userId            String?
+  slug              String   @unique
+  folder            String   @unique
+  title             String
+  summary           String?
+  description       String?
+  organization      String?
+  workType          String?
+  year              Int?
+  role              String?
+  seniority         String?
+  categories        String[]
+  skills            String[]
+  tools             String[]
+  tags              String[]
+  highlights        String[]
+  links             Json?
+  nda               Boolean?
+  coverImage        String?
+  caseProblem       String?
+  caseActions       String?
+  caseResults       String?
+  schemaVersion     String?
+  metadataChecksum  String?
+  briefChecksum     String?
+  metadataUpdatedAt DateTime?
+  briefUpdatedAt    DateTime?
+  fsLastModified    DateTime?
+  lastSyncedAt      DateTime?
+  syncStatus        String   @default("clean")
+  syncWarnings      Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets            ProjectAsset[]
+  deliverables      ProjectDeliverable[]
+  files             ProjectFile[]
+  analysis          ProjectAnalysis?
+
   @@map("projects")
+}
+
+model ProjectAsset {
+  id             String   @id @default(cuid())
+  projectId      String
+  relativePath   String
+  label          String?
+  type           String
+  size           Int?
+  checksum       String?
+  lastModifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relativePath])
+  @@map("project_assets")
+}
+
+model ProjectDeliverable {
+  id             String   @id @default(cuid())
+  projectId      String
+  relativePath   String
+  label          String?
+  format         String?
+  size           Int?
+  checksum       String?
+  lastModifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relativePath])
+  @@map("project_deliverables")
 }
 
 model ProjectFile {

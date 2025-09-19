@@ -172,7 +172,10 @@ router.post('/projects/:projectId/analyze', requireAuth, async (req: Authenticat
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
+        OR: [
+          { userId: userId },
+          { userId: null },
+        ]
       },
       include: {
         files: true
@@ -217,7 +220,10 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
+        OR: [
+          { userId: userId },
+          { userId: null },
+        ]
       },
       include: {
         files: {
@@ -278,9 +284,9 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
     res.json({
       project: {
         id: project.id,
-        name: project.name,
+        name: project.title,
         description: project.description,
-        category: project.category,
+        category: project.workType,
         fileCount: project.files.length,
         updatedAt: project.updatedAt,
       },
@@ -302,7 +308,10 @@ router.get('/projects/:projectId/analysis/results', requireAuth, async (req: Aut
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
+        OR: [
+          { userId: userId },
+          { userId: null },
+        ]
       }
     });
 
@@ -381,8 +390,8 @@ router.post('/projects/:projectId/analysis/apply', requireAuth, async (req: Auth
 
     const updateData: Record<string, unknown> = {};
     
-    if (suggestions?.title) updateData.name = suggestions.title;
-    if (suggestions?.category) updateData.category = suggestions.category;
+    if (suggestions?.title) updateData.title = suggestions.title;
+    if (suggestions?.category) updateData.workType = suggestions.category;
     if (suggestions?.description) updateData.description = suggestions.description;
 
     await prisma.project.update({

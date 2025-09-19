@@ -32,7 +32,7 @@ The script performs the following steps:
 2. Starts the Postgres, Redis, and backend containers defined in
    `docker-compose.yml` (unless you opt out).
 3. Optionally runs `npx prisma migrate deploy` to apply database migrations.
-4. Launches the backend via `npm run dev` and the front-end via `npm run dev -- --host`.
+4. Launches the backend via `npm run dev` (which bootstraps the filesystem sync service) and the front-end via `npm run dev -- --host`.
 
 When the script completes you will have two services running locally:
 
@@ -74,5 +74,15 @@ See `./scripts/startup.sh --help` for the latest usage text.
 
 Prefer to manage services yourself? The script is optional. You can still
 follow the manual steps documented in `README.md` to bring up each component.
-The script simply wraps those commands so newcomers can boot the stack with one
-line.
+After the backend is running you can use the new filesystem bridge CLI:
+
+```bash
+cd server
+# scan all projects immediately
+npm run sync
+
+# rescan a specific folder after uploading assets
+npm run sync -- --project 2025_Acme_Redesign
+```
+
+The dashboard's "Sync filesystem" button and the `/api/projects` endpoints call the same service, so you can trigger updates from scripts, CI, or scheduled jobs.
