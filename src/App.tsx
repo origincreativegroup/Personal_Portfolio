@@ -7,6 +7,7 @@ import NewEditorPage from './pages/NewEditorPage'
 import SettingsPage from './pages/SettingsPage'
 import PortfolioForgeAIAnalysis from './pages/PortfolioForgeAIAnalysis'
 import OpenAISettingsPage from './pages/OpenAISettingsPage'
+import AdminObservabilityDashboard from './pages/AdminObservabilityDashboard'
 // Legacy pages for backward compatibility
 import IntakePage from './pages/IntakePage'
 import EditorPage from './pages/EditorPage'
@@ -24,6 +25,7 @@ function App() {
           <Route path="/create" element={<NewIntakePage />} />
           <Route path="/editor/:projectId" element={<NewEditorPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin/observability" element={<AdminObservabilityDashboard />} />
 
           {/* AI Analysis route */}
           <Route path="/analysis" element={<PortfolioForgeAIAnalysis />} />

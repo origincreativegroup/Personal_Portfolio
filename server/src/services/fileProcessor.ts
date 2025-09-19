@@ -1,10 +1,11 @@
 import { Storage } from '@google-cloud/storage';
 import { createWorker, Worker } from 'tesseract.js';
-import { fromBuffer as pdfFromBuffer, FromBufferResult } from 'pdf2pic';
+import { fromBuffer as pdfFromBuffer } from 'pdf2pic';
 import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { readFileSync } from 'fs';
+import { getPrismaClient } from '../utils/prismaClient';
 
 interface ProcessResult {
   insights: unknown;
@@ -14,15 +15,22 @@ interface ProcessResult {
 
 export class FileProcessor {
   private storage: Storage;
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null = null;
 
   constructor() {
     this.storage = new Storage();
-    this.prisma = new PrismaClient();
+  }
+
+  private getPrisma(): PrismaClient {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient();
+    }
+    return this.prisma;
   }
 
   async processFile(fileId: string): Promise<void> {
-    const file = await this.prisma.projectFile.findUnique({
+    const prisma = this.getPrisma();
+    const file = await prisma.projectFile.findUnique({
       where: { id: fileId }
     });
 
@@ -33,7 +41,7 @@ export class FileProcessor {
     const startTime = Date.now();
 
     try {
-      await this.prisma.fileAnalysis.upsert({
+      await prisma.fileAnalysis.upsert({
         where: { fileId },
         create: {
           fileId,
@@ -81,7 +89,7 @@ export class FileProcessor {
 
       const processingTime = (Date.now() - startTime) / 1000;
 
-      await this.prisma.fileAnalysis.update({
+      await prisma.fileAnalysis.update({
         where: { fileId },
         data: {
           status: 'completed',
@@ -96,7 +104,7 @@ export class FileProcessor {
     } catch (error) {
       console.error(`Error processing file ${fileId}:`, error);
       
-      await this.prisma.fileAnalysis.update({
+      await prisma.fileAnalysis.update({
         where: { fileId },
         data: {
           status: 'failed',
@@ -139,7 +147,7 @@ export class FileProcessor {
   private async processPDF(url: string): Promise<ProcessResult> {
     const pdfBuffer = await this.downloadFile(url);
     
-    const converter: FromBufferResult = pdfFromBuffer(pdfBuffer, {
+    const converter = pdfFromBuffer(pdfBuffer, {
       density: 200,
       saveFilename: 'untitled',
       savePath: '/tmp',
@@ -148,7 +156,7 @@ export class FileProcessor {
       height: 2000
     });
 
-    const images = await converter.bulk(-1);
+    const images = (await converter.bulk(-1)) as unknown as Array<{ name: string; size: number; path: string }>;
 
     let fullText = '';
     const insights: unknown[] = [];

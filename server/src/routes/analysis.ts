@@ -1,7 +1,10 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import { analysisQueue } from '../jobs/analysisQueue';
+import { getPrismaClient } from '../utils/prismaClient';
+import { analysisQueue, enqueueFileAnalysis, enqueueProjectAnalysis } from '../jobs/analysisQueue';
+import { deadLetterQueue } from '../jobs/deadLetterQueue';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
+import { jobHistoryService } from '../services/jobHistory';
+import { jobEventBus, type JobUpdateEvent } from '../observability/jobEventBus';
 
 const ensureStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
@@ -162,12 +165,24 @@ const normalizeInsights = (value: unknown): SerializedInsight[] => {
 };
 
 const router = express.Router();
-const prisma = new PrismaClient();
+const initialiseSse = (res: express.Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders();
+  }
+};
+
+const writeSseEvent = (res: express.Response, event: JobUpdateEvent) => {
+  res.write(`data: ${JSON.stringify(event)}\n\n`);
+};
 
 router.post('/projects/:projectId/analyze', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user!.id;
+    const prisma = getPrismaClient();
 
     const project = await prisma.project.findFirst({
       where: {
@@ -189,15 +204,18 @@ router.post('/projects/:projectId/analyze', requireAuth, async (req: Authenticat
       return;
     }
 
+    const spacing = Number(process.env.ANALYSIS_FILE_JOB_DELAY_MS ?? 250);
+    let offset = 0;
+
     for (const file of project.files) {
-      await analysisQueue.add('analyze-file', { fileId: file.id });
+      await enqueueFileAnalysis({ projectId, fileId: file.id, delay: offset });
+      offset += spacing;
     }
 
-    await analysisQueue.add('analyze-project', { projectId }, {
-      delay: project.files.length * 5000
-    });
+    const projectDelay = Math.max(project.files.length * 5000, offset);
+    await enqueueProjectAnalysis({ projectId, delay: projectDelay });
 
-    res.json({ 
+    res.json({
       message: 'Analysis started',
       projectId,
       filesQueued: project.files.length
@@ -213,6 +231,7 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
   try {
     const { projectId } = req.params;
     const userId = req.user!.id;
+    const prisma = getPrismaClient();
 
     const project = await prisma.project.findFirst({
       where: {
@@ -233,21 +252,51 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
       return;
     }
 
+    const jobExecutions = await prisma.jobExecution.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const fileJobMap = new Map<string, typeof jobExecutions[number]>();
+    for (const execution of jobExecutions) {
+      if (execution.fileId && !fileJobMap.has(execution.fileId)) {
+        fileJobMap.set(execution.fileId, execution);
+      }
+    }
+
+    const projectJob = jobExecutions.find(execution => execution.jobName === 'analyze-project');
+
     const analysisRecord = await prisma.projectAnalysis.findUnique({
       where: { projectId }
     });
 
-    const fileAnalyses = project.files.map(file => ({
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      size: file.size,
-      status: file.analysis?.status ?? 'pending',
-      insights: normalizeInsights(file.analysis?.insights ?? []),
-      extractedText: typeof file.analysis?.extractedText === 'string' ? file.analysis.extractedText : null,
-      metadata: file.analysis?.metadata ?? null,
-      updatedAt: file.analysis?.updatedAt ?? file.updatedAt,
-    }));
+    const fileAnalyses = project.files.map(file => {
+      const jobState = fileJobMap.get(file.id);
+      const meta = jobState?.metadata as Record<string, unknown> | null;
+      const progress = typeof meta?.lastProgress === 'number' ? meta.lastProgress : undefined;
+
+      return {
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        status: file.analysis?.status ?? 'pending',
+        insights: normalizeInsights(file.analysis?.insights ?? []),
+        extractedText: typeof file.analysis?.extractedText === 'string' ? file.analysis.extractedText : null,
+        metadata: file.analysis?.metadata ?? null,
+        updatedAt: file.analysis?.updatedAt ?? file.updatedAt,
+        jobStatus: jobState?.status ?? 'queued',
+        jobAttempt: jobState?.attempts ?? 0,
+        jobMaxAttempts: jobState?.maxAttempts ?? null,
+        jobNextRetryAt: jobState?.retryAt ? jobState.retryAt.toISOString() : null,
+        jobLastError: jobState?.lastError ?? null,
+        jobProgress: typeof progress === 'number'
+          ? progress
+          : jobState?.status === 'completed'
+            ? 100
+            : undefined,
+      };
+    });
 
     const analysisPayload = analysisRecord
       ? {
@@ -261,6 +310,15 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
           suggestedTags: ensureStringArray(analysisRecord.suggestedTags ?? []),
           updatedAt: analysisRecord.updatedAt,
           startedAt: analysisRecord.createdAt,
+          jobStatus: projectJob
+            ? {
+                status: projectJob.status,
+                attempts: projectJob.attempts,
+                maxAttempts: projectJob.maxAttempts,
+                nextRetryAt: projectJob.retryAt ? projectJob.retryAt.toISOString() : null,
+                lastError: projectJob.lastError ?? null,
+              }
+            : null,
         }
       : {
           status: 'pending',
@@ -273,6 +331,15 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
           suggestedTags: [] as string[],
           updatedAt: null,
           startedAt: null,
+          jobStatus: projectJob
+            ? {
+                status: projectJob.status,
+                attempts: projectJob.attempts,
+                maxAttempts: projectJob.maxAttempts,
+                nextRetryAt: projectJob.retryAt ? projectJob.retryAt.toISOString() : null,
+                lastError: projectJob.lastError ?? null,
+              }
+            : null,
         };
 
     res.json({
@@ -294,10 +361,53 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
   }
 });
 
+router.get('/projects/:projectId/stream', requireAuth, (req: AuthenticatedRequest, res) => {
+  const { projectId } = req.params;
+  initialiseSse(res);
+  writeSseEvent(res, {
+    jobId: 'initial',
+    jobName: 'initial-state',
+    queueName: analysisQueue.name,
+    projectId,
+    status: 'queued',
+    timestamp: new Date().toISOString(),
+  });
+
+  const heartbeat = setInterval(() => {
+    res.write(`: heartbeat ${Date.now()}\n\n`);
+  }, 15000);
+  heartbeat.unref();
+
+  const unsubscribe = jobEventBus.subscribe(event => {
+    if (!event.projectId || event.projectId !== projectId) {
+      return;
+    }
+    writeSseEvent(res, event);
+  });
+
+  req.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
+});
+
+router.get('/projects/:projectId/jobs/history', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { projectId } = req.params;
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 25), 1), 100);
+    const jobs = await jobHistoryService.getProjectHistory(projectId, limit);
+    res.json({ jobs });
+  } catch (error) {
+    console.error('Error loading project job history:', error);
+    res.status(500).json({ error: 'Unable to load job history' });
+  }
+});
+
 router.get('/projects/:projectId/analysis/results', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user!.id;
+    const prisma = getPrismaClient();
 
     const project = await prisma.project.findFirst({
       where: {
@@ -361,11 +471,59 @@ router.get('/projects/:projectId/analysis/results', requireAuth, async (req: Aut
   }
 });
 
+router.post('/jobs/:jobId/requeue', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await analysisQueue.getJob(jobId);
+    if (job) {
+      try {
+        await job.retry();
+        res.json({ jobId: String(job.id), status: 'requeued', source: 'primary' });
+        return;
+      } catch (retryError) {
+        console.error('Error retrying job from primary queue:', retryError);
+      }
+    }
+
+    const deadLetterJob = await deadLetterQueue.getJob(jobId);
+    if (!deadLetterJob) {
+      res.status(404).json({ error: 'Job not found in queues' });
+      return;
+    }
+
+    const payload = deadLetterJob.data as {
+      jobName?: string;
+      data?: Record<string, unknown>;
+      projectId?: string;
+      fileId?: string;
+    };
+
+    const jobName = payload.jobName ?? 'analyze-project';
+    const jobData = payload.data ?? {};
+    const requeued = await analysisQueue.add(jobName, jobData);
+    await jobHistoryService.recordQueued({
+      jobId: String(requeued.id),
+      jobName: requeued.name,
+      queueName: analysisQueue.name,
+      projectId: payload.projectId ?? (typeof jobData.projectId === 'string' ? jobData.projectId : undefined),
+      fileId: payload.fileId ?? (typeof jobData.fileId === 'string' ? jobData.fileId : undefined),
+      data: jobData,
+      maxAttempts: requeued.opts?.attempts,
+    });
+    await deadLetterJob.remove();
+    res.json({ jobId: String(requeued.id), status: 'requeued', source: 'dead-letter' });
+  } catch (error) {
+    console.error('Error requeuing job:', error);
+    res.status(500).json({ error: 'Unable to requeue job' });
+  }
+});
+
 router.post('/projects/:projectId/analysis/apply', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user!.id;
     const { suggestions } = req.body as { suggestions: { title?: string; category?: string; description?: string } };
+    const prisma = getPrismaClient();
 
     const project = await prisma.project.findFirst({
       where: {
@@ -396,6 +554,69 @@ router.post('/projects/:projectId/analysis/apply', requireAuth, async (req: Auth
     console.error('Error applying suggestions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+router.get('/observability/summary', requireAuth, async (_req: AuthenticatedRequest, res) => {
+  try {
+    const [counts, hourly, daily, isPaused, workers] = await Promise.all([
+      analysisQueue.getJobCounts(),
+      jobHistoryService.getSummary(analysisQueue.name, 60 * 60 * 1000),
+      jobHistoryService.getSummary(analysisQueue.name, 24 * 60 * 60 * 1000),
+      analysisQueue.isPaused(),
+      analysisQueue.getWorkers().catch(() => [] as unknown[]),
+    ]);
+
+    const clientStatus = (analysisQueue.client as unknown as { status?: string } | undefined)?.status;
+    const workerHealth = {
+      isReady: clientStatus === 'ready' || clientStatus === 'connect',
+      isPaused,
+      workerCount: Array.isArray(workers) ? workers.length : 0,
+    };
+
+    res.json({
+      queue: counts,
+      throughput: {
+        hourly,
+        daily,
+      },
+      failureRate: {
+        hourly: hourly.jobs > 0 ? hourly.failures / hourly.jobs : 0,
+        daily: daily.jobs > 0 ? daily.failures / daily.jobs : 0,
+      },
+      workerHealth,
+    });
+  } catch (error) {
+    console.error('Error building observability summary:', error);
+    res.status(500).json({ error: 'Unable to load observability summary' });
+  }
+});
+
+router.get('/observability/recent-jobs', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 20), 1), 100);
+    const jobs = await jobHistoryService.getRecentExecutions(limit);
+    res.json({ jobs });
+  } catch (error) {
+    console.error('Error loading recent jobs:', error);
+    res.status(500).json({ error: 'Unable to load recent jobs' });
+  }
+});
+
+router.get('/observability/stream', requireAuth, (_req: AuthenticatedRequest, res) => {
+  initialiseSse(res);
+  const heartbeat = setInterval(() => {
+    res.write(`: heartbeat ${Date.now()}\n\n`);
+  }, 15000);
+  heartbeat.unref();
+
+  const unsubscribe = jobEventBus.subscribe(event => {
+    writeSseEvent(res, event);
+  });
+
+  _req.on('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
 });
 
 export default router;

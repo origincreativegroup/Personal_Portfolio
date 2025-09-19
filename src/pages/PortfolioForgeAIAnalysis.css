@@ -303,6 +303,10 @@
 
 .analysis-file-card__meta {
   margin: 0.35rem 0 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .analysis-file-card__status {
@@ -334,6 +338,46 @@
 .analysis-file-card__status--failed {
   background: rgba(248, 113, 113, 0.22);
   color: #b91c1c;
+}
+
+.analysis-file-card__meta-detail {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.analysis-page--dark .analysis-file-card__meta-detail {
+  color: #cbd5f5;
+}
+
+.analysis-file-card__progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.35);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.analysis-page--dark .analysis-file-card__progress {
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.analysis-file-card__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  transition: width 0.3s ease;
+}
+
+.analysis-file-card__error {
+  margin: 0.35rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.analysis-page--dark .analysis-file-card__error {
+  color: #fca5a5;
 }
 
 .analysis-file-card__insights {
@@ -458,6 +502,65 @@
 
 .analysis-page--dark .analysis-progress__status {
   color: #c4b5fd;
+}
+
+.analysis-progress__meta {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.analysis-page--dark .analysis-progress__meta {
+  color: #cbd5f5;
+}
+
+.analysis-progress__stream {
+  font-weight: 600;
+}
+
+.analysis-progress__stream--connected {
+  color: #16a34a;
+}
+
+.analysis-progress__stream--connecting {
+  color: #2563eb;
+}
+
+.analysis-progress__stream--disconnected,
+.analysis-progress__stream--reconnecting {
+  color: #b91c1c;
+}
+
+.analysis-progress__hints {
+  margin: 0 auto;
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  max-width: 520px;
+  text-align: left;
+  border-radius: 12px;
+  background: rgba(79, 70, 229, 0.06);
+}
+
+.analysis-page--dark .analysis-progress__hints {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.analysis-progress__hints h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.analysis-progress__hints ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
 }
 
 .analysis-empty {

@@ -61,7 +61,8 @@ model ProjectFile {
   
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   analysis     FileAnalysis?
-  
+  jobExecutions JobExecution[]
+
   @@map("project_files")
 }
 
@@ -106,7 +107,8 @@ model ProjectAnalysis {
   updatedAt       DateTime @updatedAt
   
   project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  jobExecutions   JobExecution[]
+
   @@map("project_analyses")
 }
 
@@ -123,6 +125,52 @@ model FileAnalysis {
   updatedAt    DateTime @updatedAt
   
   file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  
+
+  jobExecutions JobExecution[]
+
   @@map("file_analyses")
+}
+
+model JobExecution {
+  id          String   @id @default(cuid())
+  jobId       String   @unique
+  queueName   String
+  jobName     String
+  projectId   String?
+  fileId      String?
+  status      String   @default("queued")
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(1)
+  retryAt     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Float?
+  lastError   String?
+  errorStack  String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  file        ProjectFile? @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  events      JobEvent[]
+
+  @@map("job_executions")
+  @@index([projectId, createdAt])
+  @@index([queueName, status])
+}
+
+model JobEvent {
+  id             String   @id @default(cuid())
+  jobExecutionId String
+  status         String
+  attempt        Int      @default(0)
+  message        String?
+  payload        Json?
+  occurredAt     DateTime @default(now())
+
+  jobExecution JobExecution @relation(fields: [jobExecutionId], references: [id], onDelete: Cascade)
+
+  @@map("job_events")
+  @@index([jobExecutionId, occurredAt])
 }

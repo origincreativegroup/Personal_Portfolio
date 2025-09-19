@@ -1,0 +1,193 @@
+.observability-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 2.5rem 2rem 3rem;
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.observability-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.observability-header h1 {
+  font-size: clamp(1.75rem, 2.5vw, 2.4rem);
+  margin: 0;
+}
+
+.observability-header__actions button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.observability-header__actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.observability-header__actions button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.25);
+}
+
+.observability-error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #b91c1c;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+}
+
+.observability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.observability-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 1.5rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.observability-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.observability-card ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.observability-section {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  padding: 1.75rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+}
+
+.observability-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.observability-table-wrapper {
+  overflow-x: auto;
+}
+
+.observability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.observability-table th,
+.observability-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.observability-table th {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.observability-empty {
+  text-align: center;
+  padding: 1rem 0;
+  color: #64748b;
+}
+
+.observability-events {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.observability-event {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: rgba(248, 250, 252, 0.75);
+}
+
+.observability-event header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.observability-event__status {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.observability-event__status--completed {
+  color: #047857;
+}
+
+.observability-event__status--processing {
+  color: #2563eb;
+}
+
+.observability-event__status--failed,
+.observability-event__status--dead-lettered {
+  color: #b91c1c;
+}
+
+.observability-event dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 1rem;
+  font-size: 0.8rem;
+}
+
+.observability-event dt {
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .observability-page {
+    padding: 2rem 1rem;
+  }
+
+  .observability-section {
+    padding: 1.25rem;
+  }
+
+  .observability-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}

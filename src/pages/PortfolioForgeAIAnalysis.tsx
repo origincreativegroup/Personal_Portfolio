@@ -78,6 +78,20 @@ type AnalysisFile = {
   extractedText: string | null
   metadata: unknown
   updatedAt?: string
+  jobStatus: string
+  jobAttempt: number
+  jobMaxAttempts: number | null
+  jobNextRetryAt: string | null
+  jobLastError: string | null
+  jobProgress?: number
+}
+
+type JobStatusDetails = {
+  status: string
+  attempts: number
+  maxAttempts: number | null
+  nextRetryAt: string | null
+  lastError: string | null
 }
 
 type ProblemAnalysis = {
@@ -154,6 +168,7 @@ type AnalysisStatusResponse = {
     suggestedTags: string[]
     updatedAt: string | null
     startedAt: string | null
+    jobStatus: JobStatusDetails | null
   }
   fileAnalyses: Array<{
     id: string
@@ -165,7 +180,29 @@ type AnalysisStatusResponse = {
     extractedText: string | null
     metadata: unknown
     updatedAt: string | null
+    jobStatus: string
+    jobAttempt: number
+    jobMaxAttempts: number | null
+    jobNextRetryAt: string | null
+    jobLastError: string | null
+    jobProgress?: number
   }>
+}
+
+type JobUpdateEventPayload = {
+  jobId: string
+  jobName: string
+  queueName: string
+  status: string
+  projectId?: string | null
+  fileId?: string | null
+  progress?: number
+  attempt?: number
+  maxAttempts?: number
+  nextRetryAt?: string | null
+  message?: string
+  hints?: string[]
+  timestamp: string
 }
 
 type AnalysisResultResponse = {
@@ -268,6 +305,27 @@ const formatProcessingTime = (seconds: number | null | undefined): string => {
   return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`
 }
 
+const formatRetryCountdown = (nextRetryAt: string | null, now: number): string | null => {
+  if (!nextRetryAt) {
+    return null
+  }
+  const retryTime = Date.parse(nextRetryAt)
+  if (Number.isNaN(retryTime)) {
+    return null
+  }
+  const delta = retryTime - now
+  if (delta <= 0) {
+    return 'Retrying now'
+  }
+  const totalSeconds = Math.ceil(delta / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes > 0) {
+    return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
+  }
+  return `${seconds}s`
+}
+
 const computeProgress = (files: AnalysisFile[], status: string, totalFiles: number): number => {
   if (status === 'failed') {
     return 0
@@ -303,6 +361,12 @@ const mapStatusFiles = (files: AnalysisStatusResponse['fileAnalyses']): Analysis
     extractedText: file.extractedText,
     metadata: file.metadata,
     updatedAt: file.updatedAt ?? undefined,
+    jobStatus: file.jobStatus ?? 'queued',
+    jobAttempt: file.jobAttempt ?? 0,
+    jobMaxAttempts: file.jobMaxAttempts ?? null,
+    jobNextRetryAt: file.jobNextRetryAt ?? null,
+    jobLastError: file.jobLastError ?? null,
+    jobProgress: typeof file.jobProgress === 'number' ? file.jobProgress : undefined,
   }))
 const transformResult = (payload: AnalysisResultResponse): AIAnalysis => ({
   confidence: Math.round(payload.confidence ?? 0),
@@ -534,6 +598,9 @@ export default function PortfolioForgeAIAnalysis() {
   const [customEdits, setCustomEdits] = useState<Partial<Record<SuggestionType, string>>>({})
   const [applyStatus, setApplyStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [applyMessage, setApplyMessage] = useState<string | null>(null)
+  const [operatorHints, setOperatorHints] = useState<string[]>([])
+  const [jobStreamStatus, setJobStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle')
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
 
   const baseHeaders = useMemo(createBaseHeaders, [])
   const jsonHeaders = useMemo(() => createJsonHeaders(baseHeaders), [baseHeaders])
@@ -635,8 +702,78 @@ export default function PortfolioForgeAIAnalysis() {
     return transformResult(payload)
   }, [baseHeaders])
 
+  const handleJobUpdate = useCallback((event: JobUpdateEventPayload) => {
+    if (event.hints && event.hints.length > 0) {
+      setOperatorHints(previous => {
+        const combined = new Set(previous)
+        event.hints?.forEach(hint => combined.add(hint))
+        return Array.from(combined)
+      })
+    }
+
+    if (event.fileId) {
+      setAnalysisFiles(previous => previous.map(file => {
+        if (file.id !== event.fileId) {
+          return file
+        }
+
+        const progressValue = typeof event.progress === 'number'
+          ? Math.min(100, Math.max(0, event.progress))
+          : event.status === 'completed'
+            ? 100
+            : file.jobProgress
+
+        let nextStatus: FileStatus = file.status
+        if (event.status === 'completed') {
+          nextStatus = 'completed'
+        } else if (event.status === 'processing' || event.status === 'progress') {
+          nextStatus = 'processing'
+        } else if (event.status === 'failed' || event.status === 'dead-lettered') {
+          nextStatus = 'failed'
+        }
+
+        return {
+          ...file,
+          status: nextStatus,
+          jobStatus: event.status,
+          jobAttempt: event.attempt ?? file.jobAttempt,
+          jobMaxAttempts: event.maxAttempts ?? file.jobMaxAttempts,
+          jobNextRetryAt: event.nextRetryAt ?? null,
+          jobProgress: progressValue,
+          jobLastError: event.status === 'failed' || event.status === 'dead-lettered'
+            ? event.message ?? file.jobLastError
+            : file.jobLastError,
+        }
+      }))
+    }
+
+    if (event.jobName === 'analyze-project') {
+      setAnalysisSummary(previous => {
+        if (!previous) {
+          return previous
+        }
+        const nextJobStatus: JobStatusDetails = {
+          status: event.status,
+          attempts: event.attempt ?? previous.jobStatus?.attempts ?? 0,
+          maxAttempts: event.maxAttempts ?? previous.jobStatus?.maxAttempts ?? null,
+          nextRetryAt: event.nextRetryAt ?? null,
+          lastError: event.message ?? previous.jobStatus?.lastError ?? null,
+        }
+        return { ...previous, jobStatus: nextJobStatus }
+      })
+
+      if (event.status === 'failed') {
+        setAnalysisStep('failed')
+        if (event.message) {
+          setAnalysisError(event.message)
+        }
+      }
+    }
+  }, [])
+
   const initialiseFromStatus = useCallback(async (projectId: string) => {
     try {
+      setOperatorHints([])
       const status = await fetchAnalysisStatus(projectId)
       const files = mapStatusFiles(status.fileAnalyses)
 
@@ -710,12 +847,14 @@ export default function PortfolioForgeAIAnalysis() {
         suggestedTags: [],
         updatedAt: null,
         startedAt: new Date().toISOString(),
+        jobStatus: null,
       })
       setAnalysisFiles([])
       setAnalysisStep('analyzing')
       setAnalysisProgress(0)
       setCustomEdits({})
       setExpandedSections(INITIAL_SECTIONS)
+      setOperatorHints([])
       setIsPolling(true)
 
       try {
@@ -753,6 +892,8 @@ export default function PortfolioForgeAIAnalysis() {
       setAnalysisError(null)
       setApplyStatus('idle')
       setApplyMessage(null)
+      setOperatorHints([])
+      setJobStreamStatus('idle')
       return
     }
 
@@ -761,6 +902,16 @@ export default function PortfolioForgeAIAnalysis() {
     setAnalysisError(null)
     initialiseFromStatus(projectIdParam)
   }, [initialiseFromStatus, projectIdParam])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [])
   useEffect(() => {
     if (!isPolling || !selectedProjectId) {
       return
@@ -814,6 +965,48 @@ export default function PortfolioForgeAIAnalysis() {
       window.clearInterval(interval)
     }
   }, [fetchAnalysisResult, fetchAnalysisStatus, isPolling, selectedProjectId])
+
+  useEffect(() => {
+    if (!analysisSummary) {
+      return
+    }
+    const totalFiles = activeProject?.fileCount ?? queuedFiles
+    setAnalysisProgress(computeProgress(analysisFiles, analysisSummary.status, totalFiles))
+  }, [analysisFiles, analysisSummary, activeProject, queuedFiles])
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setJobStreamStatus('idle')
+      return
+    }
+    setJobStreamStatus('connecting')
+
+    const source = new EventSource(`${API_BASE_URL}/api/analysis/projects/${selectedProjectId}/stream`)
+
+    source.onopen = () => {
+      setJobStreamStatus('connected')
+    }
+
+    source.onerror = () => {
+      setJobStreamStatus('disconnected')
+    }
+
+    source.onmessage = event => {
+      if (!event.data) {
+        return
+      }
+      try {
+        const payload = JSON.parse(event.data) as JobUpdateEventPayload
+        handleJobUpdate(payload)
+      } catch (error) {
+        console.error('Unable to parse job update payload', error)
+      }
+    }
+
+    return () => {
+      source.close()
+    }
+  }, [handleJobUpdate, selectedProjectId])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -895,6 +1088,12 @@ export default function PortfolioForgeAIAnalysis() {
     type: determineFileType(file.mimeType),
     status: file.status,
     insights: file.insights.map(describeInsight),
+    jobStatus: file.jobStatus,
+    jobAttempt: file.jobAttempt,
+    jobMaxAttempts: file.jobMaxAttempts,
+    jobNextRetryAt: file.jobNextRetryAt,
+    jobProgress: typeof file.jobProgress === 'number' ? Math.min(100, Math.max(0, file.jobProgress)) : undefined,
+    jobLastError: file.jobLastError,
   })), [analysisFiles])
 
   const progressLabel = useMemo(() => {
@@ -1066,6 +1265,8 @@ export default function PortfolioForgeAIAnalysis() {
           <div className="analysis-sidebar__files">
             {sidebarFiles.length > 0 ? sidebarFiles.map(file => {
               const FileIconComponent = FILE_ICONS[file.type]
+              const retryCountdown = formatRetryCountdown(file.jobNextRetryAt, currentTime)
+              const progressValue = typeof file.jobProgress === 'number' ? Math.min(100, Math.max(0, file.jobProgress)) : undefined
 
               return (
                 <div key={file.id} className="analysis-file-card">
@@ -1078,7 +1279,21 @@ export default function PortfolioForgeAIAnalysis() {
                       <span className={`analysis-file-card__status analysis-file-card__status--${file.status}`}>
                         {STATUS_LABELS[file.status]}
                       </span>
+                      <span className="analysis-file-card__meta-detail">
+                        Attempt {file.jobAttempt}{typeof file.jobMaxAttempts === 'number' ? `/${file.jobMaxAttempts}` : ''}
+                      </span>
+                      {retryCountdown ? (
+                        <span className="analysis-file-card__meta-detail">Retry in {retryCountdown}</span>
+                      ) : null}
                     </div>
+                    {typeof progressValue === 'number' && file.status !== 'completed' ? (
+                      <div className="analysis-file-card__progress" aria-label={`Progress ${Math.round(progressValue)} percent`}>
+                        <div className="analysis-file-card__progress-bar" style={{ width: `${progressValue}%` }} />
+                      </div>
+                    ) : null}
+                    {file.jobLastError ? (
+                      <p className="analysis-file-card__error">{file.jobLastError}</p>
+                    ) : null}
                     <div className="analysis-file-card__insights">
                       {file.insights.length > 0 ? file.insights.map(insight => (
                         <span key={insight} className="analysis-file-card__insight">
@@ -1138,6 +1353,26 @@ export default function PortfolioForgeAIAnalysis() {
               <p className="analysis-progress__status">
                 {Math.round(Math.min(analysisProgress, 100))}% • {progressLabel}
               </p>
+              <div className="analysis-progress__meta">
+                <span className={`analysis-progress__stream analysis-progress__stream--${jobStreamStatus}`}>
+                  Live updates: {jobStreamStatus === 'connected' ? 'connected' : jobStreamStatus === 'connecting' ? 'connecting…' : 'reconnecting'}
+                </span>
+                {analysisSummary?.jobStatus?.nextRetryAt ? (
+                  <span>
+                    Project retry {formatRetryCountdown(analysisSummary.jobStatus.nextRetryAt, currentTime) ?? 'soon'}
+                  </span>
+                ) : null}
+              </div>
+              {operatorHints.length > 0 ? (
+                <div className="analysis-progress__hints">
+                  <h3>Operator hints</h3>
+                  <ul>
+                    {operatorHints.map(hint => (
+                      <li key={hint}>{hint}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           ) : analysisResult ? (
             <div className="analysis-results">
