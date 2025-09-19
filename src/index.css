@@ -429,6 +429,16 @@ input, textarea, select {
   display: block;
 }
 
+.editor-page__card--editor {
+  grid-column: 1 / -1;
+  padding: 0;
+  overflow: hidden;
+}
+
+.editor-page__card--editor .project-editor {
+  min-height: 520px;
+}
+
 .editor-page__card--files > .file-explorer {
   background: #ffffff;
   border-radius: 16px;
@@ -2095,9 +2105,29 @@ input, textarea, select {
   border-color: var(--blue-500);
 }
 
-.project-editor__actions {
+.project-editor__toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.project-editor__status {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.project-editor__status--success {
+  color: #047857;
+}
+
+.project-editor__status--error {
+  color: var(--red-600);
+}
+
+.project-editor__status--info {
+  color: var(--blue-600);
 }
 
 .project-editor__layout {
@@ -2240,6 +2270,107 @@ input, textarea, select {
 
 .setting-group .setting-group__checkbox input {
   width: auto;
+}
+
+.project-editor__helper {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+.project-editor__inline-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.project-editor__gallery-editor {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.project-editor__gallery-item {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+}
+
+.project-editor__gallery-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-editor__gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-editor__gallery-thumb--empty {
+  color: var(--gray-400);
+}
+
+.project-editor__gallery-fields {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.project-editor__gallery-fields textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.project-editor__gallery-name {
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.project-editor__metrics-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.project-editor__metrics-item {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.project-editor__links-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.project-editor__links-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(160px, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.project-editor__empty-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
 }
 
 /* Project Blocks */

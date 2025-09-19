@@ -1,4 +1,10 @@
-import type { ProjectAsset, ProjectMeta, ProjectRole, ProjectStatus } from '../intake/schema'
+import type {
+  ProjectAsset,
+  ProjectLayoutBlock,
+  ProjectMeta,
+  ProjectRole,
+  ProjectStatus,
+} from '../intake/schema'
 
 const KEY = 'pf-projects-v1'
 
@@ -12,6 +18,25 @@ const isAssetArray = (value: unknown): value is ProjectAsset[] =>
     'id' in asset &&
     typeof (asset as ProjectAsset).id === 'string',
   )
+
+const isLayoutBlock = (value: unknown): value is ProjectLayoutBlock =>
+  Boolean(
+    value &&
+      typeof value === 'object' &&
+      'id' in value &&
+      typeof (value as { id?: unknown }).id === 'string' &&
+      'type' in value &&
+      typeof (value as { type?: unknown }).type === 'string',
+  )
+
+const normaliseLayout = (value: unknown): ProjectLayoutBlock[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const blocks = value.filter(isLayoutBlock) as ProjectLayoutBlock[]
+  return blocks.length > 0 ? blocks : []
+}
 
 const normaliseStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -72,6 +97,7 @@ const readStore = (): Store => {
       createdAt,
       updatedAt,
       assets,
+      layout: normaliseLayout(meta.layout),
       autoGenerateNarrative: typeof meta.autoGenerateNarrative === 'boolean' ? meta.autoGenerateNarrative : false,
       aiGeneratedSummary: typeof meta.aiGeneratedSummary === 'string' ? meta.aiGeneratedSummary : undefined,
     }
@@ -141,6 +167,7 @@ export function saveProject(meta: ProjectMeta) {
       ? meta.technologies.filter(Boolean)
       : undefined,
     assets: Array.isArray(meta.assets) ? meta.assets : [],
+    layout: Array.isArray(meta.layout) ? meta.layout : undefined,
   }
   writeStore(store)
 }

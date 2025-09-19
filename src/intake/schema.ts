@@ -10,11 +10,76 @@ export type ProjectAsset = {
   thumbnailUrl?: string | null
 }
 
+export type ProjectBlockWidth = 'full' | 'two-thirds' | 'half' | 'third'
+export type ProjectBlockAlignment = 'left' | 'center' | 'right'
+export type ProjectBlockPadding = 'none' | 'small' | 'medium' | 'large'
+
+export type ProjectBlockSettings = {
+  width?: ProjectBlockWidth
+  alignment?: ProjectBlockAlignment
+  padding?: ProjectBlockPadding
+  backgroundColor?: string
+}
+
+export type HeroBlockContent = {
+  title?: string
+  subtitle?: string
+  assetId?: string | null
+}
+
+export type TextBlockContent = {
+  title?: string
+  text: string
+  style?: 'section' | 'body' | 'quote'
+}
+
+export type ImageBlockContent = {
+  assetId?: string | null
+  alt?: string
+  caption?: string
+}
+
+export type GalleryBlockContent = {
+  title?: string
+  items: Array<{
+    assetId?: string | null
+    caption?: string
+  }>
+}
+
+export type VideoBlockContent = {
+  assetId?: string | null
+  caption?: string
+  controls?: boolean
+  autoplay?: boolean
+  loop?: boolean
+  muted?: boolean
+}
+
+export type MetricsBlockContent = {
+  title?: string
+  metrics: Array<{ label: string; value: string }>
+}
+
+export type LinkBlockContent = {
+  title?: string
+  links: ProjectLink[]
+}
+
+export type ProjectLayoutBlock =
+  | { id: string; type: 'hero'; order: number; settings: ProjectBlockSettings; content: HeroBlockContent }
+  | { id: string; type: 'text'; order: number; settings: ProjectBlockSettings; content: TextBlockContent }
+  | { id: string; type: 'image'; order: number; settings: ProjectBlockSettings; content: ImageBlockContent }
+  | { id: string; type: 'gallery'; order: number; settings: ProjectBlockSettings; content: GalleryBlockContent }
+  | { id: string; type: 'video'; order: number; settings: ProjectBlockSettings; content: VideoBlockContent }
+  | { id: string; type: 'metrics'; order: number; settings: ProjectBlockSettings; content: MetricsBlockContent }
+  | { id: string; type: 'link'; order: number; settings: ProjectBlockSettings; content: LinkBlockContent }
+
 export type ProjectStatus = 'draft' | 'cast' | 'published'
 
-export type ProjectRole = 
-  | 'designer' 
-  | 'developer' 
+export type ProjectRole =
+  | 'designer'
+  | 'developer'
   | 'director' 
   | 'project-manager'
   | 'researcher'
@@ -70,13 +135,14 @@ export type ProjectMeta = {
   
   // Metrics & Impact
   metrics?: ProjectMetrics
-  
+
   // System fields
   cover?: string // Hero image asset ID
   createdAt: string
   updatedAt?: string
   assets: ProjectAsset[]
-  
+  layout?: ProjectLayoutBlock[]
+
   // AI Integration
   autoGenerateNarrative?: boolean
   aiGeneratedSummary?: string
@@ -122,5 +188,6 @@ export const newProject = (title: string): ProjectMeta => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   assets: [],
+  layout: [],
   autoGenerateNarrative: false
 })
