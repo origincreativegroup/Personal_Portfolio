@@ -35,9 +35,13 @@ const escapeLabelValue = (value: string): string =>
     .replace(/\n/g, '\\n')
     .replace(/"/g, '\\"')
 
+const isValidPrometheusLabelKey = (key: string): boolean => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key);
+
 const formatLabels = (labels: Record<string, string>): string => {
-  const entries = Object.entries(labels).map(([key, value]) => `${key}="${escapeLabelValue(value)}"`)
-  return entries.length > 0 ? `{${entries.join(',')}}` : ''
+  const entries = Object.entries(labels)
+    .filter(([key]) => isValidPrometheusLabelKey(key))
+    .map(([key, value]) => `${key}="${escapeLabelValue(value)}"`);
+  return entries.length > 0 ? `{${entries.join(',')}}` : '';
 }
 
 const setGauge = (map: Map<string, Map<string, number>>, key: string, subKey: string, value: number) => {
