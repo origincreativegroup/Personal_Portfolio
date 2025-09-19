@@ -1,6 +1,7 @@
 import { Storage } from '@google-cloud/storage';
 import { createWorker, Worker } from 'tesseract.js';
 import { fromBuffer as pdfFromBuffer } from 'pdf2pic';
+import type { FromBufferResult } from 'pdf2pic';
 import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
 import type { PrismaClient } from '@prisma/client';
