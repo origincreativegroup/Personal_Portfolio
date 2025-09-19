@@ -65,7 +65,7 @@ export default function IntakeForm({ onComplete }: Props) {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [selectedProject, setSelectedProject] = useState('')
   const [formData, setFormData] = useState(initialFormState)
-  const [liveMessage, setLiveMessage] = useState('')
+
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const dropzoneDescriptionId = useId()
@@ -99,19 +99,7 @@ export default function IntakeForm({ onComplete }: Props) {
         preview: file.type.startsWith('image/') && result ? result : null,
         dataUrl: result,
       })
-      setCurrentStep(1)
-      setLiveMessage(`${file.name} ready to add. Continue to choose a project.`)
-    }
-    reader.onerror = () => {
-      setUploadedFile({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        preview: null,
-        dataUrl: null,
-      })
-      setCurrentStep(1)
-      setLiveMessage(`Unable to preview ${file.name}. You can still continue to add project details.`)
+
     }
     reader.readAsDataURL(file)
   }
@@ -137,7 +125,7 @@ export default function IntakeForm({ onComplete }: Props) {
     setUploadedFile(null)
     setSelectedProject('')
     setFormData(initialFormState)
-    setLiveMessage('')
+
   }
 
   const formatFileSize = (bytes: number) => {
@@ -334,18 +322,22 @@ export default function IntakeForm({ onComplete }: Props) {
               aria-describedby={`${dropzoneDescriptionId} ${dropzoneHintId} ${dropzoneHelpId}`}
             >
               <Upload size={42} className="upload-flow__dropzone-icon" />
-              <h3 id={dropzoneDescriptionId}>{dragOver ? 'Drop your file here' : 'Drag & drop or click to upload'}</h3>
-              <p id={dropzoneHintId}>Supports JPG, PNG, PDF, MP4 and more.</p>
-              <small id={dropzoneHelpId}>Maximum file size: 50MB</small>
+
             </div>
 
             <input
               ref={fileInputRef}
               type="file"
               className="upload-flow__file-input"
-              accept="image/*,video/*,.pdf,.doc,.docx"
+              accept="image/*,video/*,.pdf,.mp4,.mov,.png,.jpg,.jpeg,.jgp,.eps,.esp,.doc,.docx"
               onChange={event => handleFileSelect(event.target.files?.[0])}
             />
+
+            {fileError && (
+              <div className="upload-flow__error" role="alert">
+                {fileError}
+              </div>
+            )}
 
             <div className="upload-flow__option-grid">
               <button type="button" className="upload-flow__option-btn" onClick={() => fileInputRef.current?.click()}>
