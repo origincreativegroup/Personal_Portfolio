@@ -1,19 +1,82 @@
-# Minimal Portfolio Repo (v5)
+# Portfolio Intake & Analysis Toolkit
 
-Generated on 2025-09-18 19:15.
+A monorepo that powers a modern portfolio workflow: a Vite/React intake app for capturing case studies, a structured project filesystem for long-term storage, and an Express/Prisma service that orchestrates AI-assisted analysis jobs.
 
-**How it works**
-- Put projects in `projects/` as subfolders: `projects/<YEAR>_<org>_<title>/`.
-- Each project keeps a compact structure for easy browsing and LLM ingestion:
-  - `brief.md` — one-page case study (Problem → Actions → Results) + highlights
-  - `metadata.json` — machine-friendly fields for resume/portfolio generation
-  - `cover.jpg` — optional hero image for galleries
-  - `assets/` — routed uploads (images, video, docs, other)
-  - `deliverables/` — finals to ship
+## Features
+- **Guided project intake.** Responsive React forms help capture problem, solution, impact, evidence, assets, and metadata, then route creators into a rich editor experience.
+- **Hybrid browser storage.** Projects are persisted in localStorage with an automatic IndexedDB upgrade, including migration, quota tracking, and manual cleanup utilities.
+- **AI analysis pipeline.** The Node/Express backend queues uploads for processing with OpenAI, Bull, Prisma, and PostgreSQL/Redis infrastructure, providing confidence metrics and structured insights.
+- **Repeatable content structure.** A `projects/` directory schema plus a Python scaffolding script keep briefs, metadata, and assets consistent across teammates and automation.
 
-**CLI helper**
-Use `scripts/new_project.py` to generate a new project quickly.
+## Repository structure
+```
+.
+├── src/                 # React intake, editor, and analysis UI
+├── server/              # Express API, Bull queue workers, Prisma models
+├── prisma/              # Database schema used by the backend service
+├── projects/            # Source-of-truth project folders (briefs, assets, etc.)
+├── scripts/             # Tooling such as the new_project generator
+├── tests/               # Node test suites (storage manager, etc.)
+├── docker-compose.yml   # Optional Postgres + Redis + API bundle
+└── Dockerfile           # Backend runtime image used by docker-compose
+```
 
+## Quick start (front-end)
+1. Install Node.js 20+ and npm (uses ESM modules and Vite).
+2. Install dependencies and start the Vite dev server:
+   ```bash
+   npm install
+   npm run dev
+   ```
+3. Visit <http://localhost:5173>. The intake app stores data locally, so no backend is required for basic project capture and editing.
+
+## Running the full stack
+The AI analysis views expect the backend, database, and Redis queue to be running.
+
+### Manual setup
+1. **Environment variables.** Create a `server/.env` file (or export variables in your shell):
+   ```bash
+   OPENAI_API_KEY=sk-...
+   DATABASE_URL=postgresql://postgres:password@localhost:5432/portfolioforge
+   REDIS_URL=redis://localhost:6379
+   DEV_USER_ID=demo-user   # optional default user for local development
+   PORT=3001               # optional override
+   ```
+2. **Install dependencies.**
+   ```bash
+   cd server
+   npm install
+   ```
+3. **Prepare the database.** Ensure PostgreSQL is reachable via `DATABASE_URL`, then run:
+   ```bash
+   npx prisma migrate deploy
+   ```
+4. **Start services.** Launch the backend and queue processor:
+   ```bash
+   npm run dev            # express server with hot reload (ts-node)
+   ```
+   The API listens on `http://localhost:3001` by default. Configure the front-end with `VITE_API_BASE_URL` or rely on the localhost fallback.
+
+### Docker Compose
+To start Postgres, Redis, and the backend together, use:
+```bash
+docker compose up --build
+```
+This exposes the API on port 3001 and persists uploads to the `./uploads` directory.
+
+## Managing portfolio content
+Projects live in versioned folders under `projects/`:
+```
+projects/
+  2025_Acme_Redesign/
+    brief.md          # Narrative following Problem → Actions → Results
+    metadata.json     # Machine-readable fields for generation pipelines
+    cover.jpg         # Optional hero asset
+    assets/           # Reference images, decks, research docs, etc.
+    deliverables/     # Final exports shipped to the client/stakeholders
+```
+
+Use the helper script to bootstrap new entries:
 ```bash
 python3 scripts/new_project.py \
   --title "Spring Launch" \
@@ -32,3 +95,27 @@ python3 scripts/new_project.py \
   --link-video "https://youtu.be/xyz" \
   --nda 0
 ```
+The script scaffolds folders, metadata, and starter briefs aligned with the UI fields and automation pipelines.
+
+## Storage architecture
+The `storageManager` service automatically promotes projects from `localStorage` to IndexedDB, handles migrations, and reports usage so authors can diagnose quota issues from the UI. Tests cover IndexedDB fallbacks, migrations, and quota reporting to ensure reliability across browsers.
+
+## Testing
+Run the Node test suites with:
+```bash
+npm run test
+```
+The tests focus on the hybrid storage layer and run via Node's built-in test runner with a custom TypeScript loader.
+
+## Environment variables summary
+| Key | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Authorises AI analysis requests via the OpenAI SDK. |
+| `DATABASE_URL` | PostgreSQL connection string for Prisma models. |
+| `REDIS_URL` | Redis endpoint for Bull background jobs. |
+| `DEV_USER_ID` | Default user injected into requests during local development. |
+| `PORT` | Express server port (defaults to `3001`). |
+| `VITE_API_BASE_URL` | Optional front-end override for the API base URL. |
+| `VITE_ANALYSIS_USER_ID` | Front-end default identifier associated with analysis requests. |
+
+With these values configured, the UI, queue workers, and AI analysis endpoints run cohesively for both solo creators and team deployments.
