@@ -57,8 +57,7 @@ export class AIAnalysisService {
           status: 'analyzing'
         },
         update: {
-          status: 'analyzing',
-          workspaceId: project.workspaceId,
+          status: 'analyzing'
         }
       });
 
