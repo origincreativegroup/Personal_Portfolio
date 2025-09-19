@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
+  Archive,
   Download,
   Eye,
   Grid,
   Image as ImageIcon,
   Layout,
+  FileText,
   Link2,
   Monitor,
   Plus,
@@ -30,6 +32,7 @@ import type {
   TextBlockContent,
   VideoBlockContent,
 } from '../intake/schema'
+import { projectRoleLabels, projectStatusLabels } from '../intake/schema'
 
 type ProjectEditorProps = {
   project: ProjectMeta
@@ -458,6 +461,8 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>(null)
+  const [exportState, setExportState] = useState<SaveState>(null)
+  const [isExporting, setIsExporting] = useState(false)
   const layoutSignature = useRef(JSON.stringify(project.layout ?? []))
 
   useEffect(() => {
@@ -493,6 +498,15 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
     const timeout = window.setTimeout(() => setSaveState(null), 3000)
     return () => window.clearTimeout(timeout)
   }, [saveState])
+
+  useEffect(() => {
+    if (!exportState) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => setExportState(null), 3000)
+    return () => window.clearTimeout(timeout)
+  }, [exportState])
 
   const selectedBlock = useMemo(
     () => blocks.find(block => block.id === selectedBlockId) ?? null,
@@ -598,14 +612,55 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
   }
 
   const exportAsHTML = () => {
-    const html = generateHTML(blocks, project, project.assets)
-    const blob = new Blob([html], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${project.slug}-portfolio.html`
-    link.click()
-    URL.revokeObjectURL(url)
+    try {
+      const html = generateHTML(blocks, project, project.assets)
+      const blob = new Blob([html], { type: 'text/html' })
+      downloadBlob(blob, `${project.slug || 'project'}-portfolio.html`)
+      setExportState({ type: 'success', message: 'HTML downloaded.' })
+    } catch (error) {
+      console.error('Failed to export HTML', error)
+      setExportState({ type: 'error', message: 'Unable to export HTML.' })
+    }
+  }
+
+  const exportAsZip = async () => {
+    if (isExporting) {
+      return
+    }
+
+    setIsExporting(true)
+    setExportState({ type: 'info', message: 'Preparing ZIP package…' })
+
+    try {
+      const blob = await buildProjectZip(blocks, project)
+      downloadBlob(blob, `${project.slug || 'project'}-portfolio.zip`)
+      setExportState({ type: 'success', message: 'ZIP package downloaded.' })
+    } catch (error) {
+      console.error('Failed to export ZIP', error)
+      setExportState({ type: 'error', message: 'Unable to export ZIP.' })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const exportAsPDF = async () => {
+    if (isExporting) {
+      return
+    }
+
+    setIsExporting(true)
+    setExportState({ type: 'info', message: 'Rendering PDF…' })
+
+    try {
+      const blob = await buildProjectPdf(blocks, project)
+      downloadBlob(blob, `${project.slug || 'project'}-portfolio.pdf`)
+      setExportState({ type: 'success', message: 'PDF downloaded.' })
+    } catch (error) {
+      console.error('Failed to export PDF', error)
+      setExportState({ type: 'error', message: 'Unable to export PDF.' })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
@@ -647,6 +702,11 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
           {!saveState && hasChanges && (
             <span className="project-editor__status project-editor__status--info">Unsaved layout changes</span>
           )}
+          {exportState && (
+            <span className={`project-editor__status project-editor__status--${exportState.type}`}>
+              {exportState.message}
+            </span>
+          )}
 
           <button
             type="button"
@@ -675,7 +735,32 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
             {isSaving ? 'Saving…' : 'Save layout'}
           </button>
 
-          <button type="button" className="button button--ghost" onClick={exportAsHTML}>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={exportAsZip}
+            disabled={isExporting}
+          >
+            <Archive size={16} />
+            Export ZIP
+          </button>
+
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={exportAsPDF}
+            disabled={isExporting}
+          >
+            <FileText size={16} />
+            Export PDF
+          </button>
+
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={exportAsHTML}
+            disabled={isExporting}
+          >
             <Download size={16} />
             Export HTML
           </button>
@@ -1508,8 +1593,27 @@ function BlockSettings({ block, assets, onUpdate }: BlockSettingsProps) {
   )
 }
 
-function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets: ProjectAsset[]): string {
+type GenerateHtmlOptions = {
+  assetPathResolver?: (asset: ProjectAsset) => string
+}
+
+function generateHTML(
+  blocks: ProjectLayoutBlock[],
+  project: ProjectMeta,
+  assets: ProjectAsset[],
+  options: GenerateHtmlOptions = {},
+): string {
   const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order)
+
+  const resolveAssetUrl = (asset: ProjectAsset | null): string | null => {
+    if (!asset) {
+      return null
+    }
+    if (options.assetPathResolver) {
+      return options.assetPathResolver(asset)
+    }
+    return asset.dataUrl
+  }
 
   const blockHTML = sortedBlocks
     .map(block => {
@@ -1524,9 +1628,10 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
           case 'hero': {
             const content = block.content as HeroBlockContent
             const asset = getAssetById(assets, content.assetId)
+            const assetUrl = resolveAssetUrl(asset)
             return `
               <div class="block-hero">
-                ${asset ? `<img src="${asset.dataUrl}" alt="${asset.description ?? asset.name ?? project.title}" class="block-hero__image" />` : ''}
+                ${assetUrl ? `<img src="${assetUrl}" alt="${asset?.description ?? asset?.name ?? project.title}" class="block-hero__image" />` : ''}
                 <div class="block-hero__content">
                   <h1>${content.title || project.title}</h1>
                   ${content.subtitle ? `<p class="block-hero__subtitle">${content.subtitle}</p>` : ''}
@@ -1549,9 +1654,10 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
           case 'image': {
             const content = block.content as ImageBlockContent
             const asset = getAssetById(assets, content.assetId)
+            const assetUrl = resolveAssetUrl(asset)
             return `
               <div class="block-image">
-                ${asset ? `<img src="${asset.dataUrl}" alt="${content.alt ?? asset.description ?? asset.name}" />` : ''}
+                ${assetUrl ? `<img src="${assetUrl}" alt="${content.alt ?? asset?.description ?? asset?.name}" />` : ''}
                 ${content.caption ? `<p class="block-image__caption">${content.caption}</p>` : ''}
               </div>
             `
@@ -1561,12 +1667,13 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
             const items = content.items
               .map(item => {
                 const asset = getAssetById(assets, item.assetId)
-                if (!asset) {
+                const assetUrl = resolveAssetUrl(asset)
+                if (!assetUrl) {
                   return ''
                 }
                 return `
                   <div class="block-gallery__item">
-                    <img src="${asset.dataUrl}" alt="${asset.description ?? asset.name}" />
+                    <img src="${assetUrl}" alt="${asset?.description ?? asset?.name}" />
                     ${item.caption ? `<p class="block-gallery__caption">${item.caption}</p>` : ''}
                   </div>
                 `
@@ -1582,6 +1689,7 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
           case 'video': {
             const content = block.content as VideoBlockContent
             const asset = getAssetById(assets, content.assetId)
+            const sourceUrl = resolveAssetUrl(asset)
             const attributes = [
               (content.controls ?? true) ? 'controls' : '',
               content.autoplay ? 'autoplay' : '',
@@ -1594,9 +1702,9 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
               .join(' ')
             return `
               <div class="block-video">
-                ${asset ? `
+                ${sourceUrl ? `
                   <video ${attributes}>
-                    <source src="${asset.dataUrl}" type="${asset.mimeType}" />
+                    <source src="${sourceUrl}" type="${asset?.mimeType ?? ''}" />
                     Your browser does not support the video tag.
                   </video>
                 ` : ''}
@@ -1687,3 +1795,719 @@ function generateHTML(blocks: ProjectLayoutBlock[], project: ProjectMeta, assets
 </body>
 </html>`
 }
+
+async function buildProjectZip(blocks: ProjectLayoutBlock[], project: ProjectMeta): Promise<Blob> {
+  const normalisedBlocks = [...blocks]
+    .sort((a, b) => a.order - b.order)
+    .map((block, index) => ({
+      ...block,
+      order: index,
+      settings: ensureSettings(block.settings),
+    }))
+
+  const assetFileMap = buildAssetFileMap(project.assets)
+  const assetPathResolver = (asset: ProjectAsset) => `assets/${assetFileMap.get(asset.id) ?? createFallbackAssetName(asset)}`
+
+  const html = generateHTML(normalisedBlocks, project, project.assets, { assetPathResolver })
+  const manifest = buildProjectManifest(project, normalisedBlocks, assetFileMap)
+
+  const encoder = new TextEncoder()
+  const safeSlug = sanitizeForFileName(project.slug || project.title || 'project') || 'project'
+
+  const entries: ZipEntry[] = [
+    { path: `${safeSlug}/index.html`, data: encoder.encode(html) },
+    { path: `${safeSlug}/project.json`, data: encoder.encode(JSON.stringify(manifest, null, 2)) },
+  ]
+
+  project.assets.forEach((asset, index) => {
+    const fileName = assetFileMap.get(asset.id) ?? createFallbackAssetName(asset, index)
+    const data = dataUrlToUint8Array(asset.dataUrl)
+    entries.push({ path: `${safeSlug}/assets/${fileName}`, data })
+  })
+
+  const zipBytes = createZipArchive(entries)
+  const buffer = toArrayBuffer(zipBytes)
+  return new Blob([buffer], { type: 'application/zip' })
+}
+
+async function buildProjectPdf(blocks: ProjectLayoutBlock[], project: ProjectMeta): Promise<Blob> {
+  const normalisedBlocks = [...blocks]
+    .sort((a, b) => a.order - b.order)
+    .map((block, index) => ({ ...block, order: index }))
+
+  const pdfBytes = createProjectPdf(project, normalisedBlocks)
+  const buffer = toArrayBuffer(pdfBytes)
+  return new Blob([buffer], { type: 'application/pdf' })
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+type ZipEntry = { path: string; data: Uint8Array }
+
+function createZipArchive(entries: ZipEntry[]): Uint8Array {
+  const encoder = new TextEncoder()
+  const localSegments: Uint8Array[] = []
+  const centralSegments: Uint8Array[] = []
+  let offset = 0
+  const now = new Date()
+  const { time: dosTime, date: dosDate } = getDosDateTime(now)
+
+  entries.forEach(entry => {
+    const fileNameBytes = encoder.encode(entry.path)
+    const data = entry.data
+    const crc = crc32(data)
+
+    const localHeader = new Uint8Array(30 + fileNameBytes.length)
+    const localView = new DataView(localHeader.buffer)
+    localView.setUint32(0, 0x04034b50, true)
+    localView.setUint16(4, 20, true)
+    localView.setUint16(6, 0, true)
+    localView.setUint16(8, 0, true)
+    localView.setUint16(10, dosTime, true)
+    localView.setUint16(12, dosDate, true)
+    localView.setUint32(14, crc, true)
+    localView.setUint32(18, data.length, true)
+    localView.setUint32(22, data.length, true)
+    localView.setUint16(26, fileNameBytes.length, true)
+    localView.setUint16(28, 0, true)
+    localHeader.set(fileNameBytes, 30)
+
+    localSegments.push(localHeader, data)
+
+    const centralHeader = new Uint8Array(46 + fileNameBytes.length)
+    const centralView = new DataView(centralHeader.buffer)
+    centralView.setUint32(0, 0x02014b50, true)
+    centralView.setUint16(4, 0x0314, true)
+    centralView.setUint16(6, 20, true)
+    centralView.setUint16(8, 0, true)
+    centralView.setUint16(10, 0, true)
+    centralView.setUint16(12, dosTime, true)
+    centralView.setUint16(14, dosDate, true)
+    centralView.setUint32(16, crc, true)
+    centralView.setUint32(20, data.length, true)
+    centralView.setUint32(24, data.length, true)
+    centralView.setUint16(28, fileNameBytes.length, true)
+    centralView.setUint16(30, 0, true)
+    centralView.setUint16(32, 0, true)
+    centralView.setUint16(34, 0, true)
+    centralView.setUint16(36, 0, true)
+    centralView.setUint32(38, 0, true)
+    centralView.setUint32(42, offset, true)
+    centralHeader.set(fileNameBytes, 46)
+
+    centralSegments.push(centralHeader)
+    offset += localHeader.length + data.length
+  })
+
+  const centralSize = centralSegments.reduce((sum, segment) => sum + segment.length, 0)
+  const endRecord = new Uint8Array(22)
+  const endView = new DataView(endRecord.buffer)
+  endView.setUint32(0, 0x06054b50, true)
+  endView.setUint16(4, 0, true)
+  endView.setUint16(6, 0, true)
+  endView.setUint16(8, entries.length, true)
+  endView.setUint16(10, entries.length, true)
+  endView.setUint32(12, centralSize, true)
+  endView.setUint32(16, offset, true)
+  endView.setUint16(20, 0, true)
+
+  return concatUint8Arrays([...localSegments, ...centralSegments, endRecord])
+}
+
+function getDosDateTime(date: Date): { time: number; date: number } {
+  const year = Math.max(1980, date.getFullYear())
+  const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate()
+  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2)
+  return { time: dosTime & 0xffff, date: dosDate & 0xffff }
+}
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let i = 0; i < 256; i += 1) {
+    let crc = i
+    for (let j = 0; j < 8; j += 1) {
+      if ((crc & 1) === 1) {
+        crc = 0xedb88320 ^ (crc >>> 1)
+      } else {
+        crc >>>= 1
+      }
+    }
+    table[i] = crc >>> 0
+  }
+  return table
+})()
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff
+  for (let i = 0; i < data.length; i += 1) {
+    const byte = data[i]
+    const index = (crc ^ byte) & 0xff
+    crc = (CRC32_TABLE[index] ^ (crc >>> 8)) >>> 0
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function dataUrlToUint8Array(dataUrl: string): Uint8Array {
+  const commaIndex = dataUrl.indexOf(',')
+  if (commaIndex === -1) {
+    return new Uint8Array()
+  }
+  const meta = dataUrl.slice(0, commaIndex)
+  const data = dataUrl.slice(commaIndex + 1)
+  if (meta.includes(';base64')) {
+    const binary = atob(data)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  }
+  return new TextEncoder().encode(decodeURIComponent(data))
+}
+
+function sanitizeForFileName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function buildAssetFileMap(assets: ProjectAsset[]): Map<string, string> {
+  const usedNames = new Map<string, number>()
+  const fileMap = new Map<string, string>()
+
+  assets.forEach((asset, index) => {
+    const fileName = getAssetFileName(asset, index, usedNames)
+    fileMap.set(asset.id, fileName)
+  })
+
+  return fileMap
+}
+
+function createFallbackAssetName(asset: ProjectAsset, index = 0): string {
+  const base = sanitizeForFileName(
+    asset.name?.replace(/\.[^.]+$/, '') ?? `${asset.mimeType.split('/')[0] ?? 'asset'}-${index + 1}`,
+  )
+  const extension = guessAssetExtension(asset)
+  if (extension) {
+    return `${base || 'asset'}-${index + 1}.${extension}`
+  }
+  return `${base || 'asset'}-${index + 1}`
+}
+
+function getAssetFileName(asset: ProjectAsset, index: number, usedNames: Map<string, number>): string {
+  const baseName = sanitizeForFileName(
+    asset.name ? asset.name.replace(/\.[^.]+$/, '') : `${asset.mimeType.split('/')[0] ?? 'asset'}-${index + 1}`,
+  )
+  const extension = guessAssetExtension(asset)
+  const base = baseName || `asset-${index + 1}`
+  const initial = extension ? `${base}.${extension}` : base
+
+  if (!usedNames.has(initial)) {
+    usedNames.set(initial, 1)
+    return initial
+  }
+
+  let counter = usedNames.get(initial) ?? 1
+  counter += 1
+  usedNames.set(initial, counter)
+  const candidate = extension ? `${base}-${counter}.${extension}` : `${base}-${counter}`
+  usedNames.set(candidate, 1)
+  return candidate
+}
+
+function guessAssetExtension(asset: ProjectAsset): string {
+  if (asset.name && asset.name.includes('.')) {
+    const ext = asset.name.split('.').pop()
+    if (ext) {
+      return sanitizeForFileName(ext)
+    }
+  }
+  const slashIndex = asset.mimeType.indexOf('/')
+  if (slashIndex >= 0) {
+    const subtype = asset.mimeType.slice(slashIndex + 1).split(';')[0]
+    return sanitizeForFileName(subtype)
+  }
+  return ''
+}
+
+function buildProjectManifest(
+  project: ProjectMeta,
+  layout: ProjectLayoutBlock[],
+  assetFileMap: Map<string, string>,
+) {
+  return {
+    project: {
+      title: project.title,
+      slug: project.slug,
+      summary: project.summary,
+      problem: project.problem,
+      solution: project.solution,
+      outcomes: project.outcomes,
+      tags: project.tags,
+      technologies: project.technologies,
+      status: project.status,
+      role: project.role,
+      collaborators: project.collaborators,
+      timeframe: project.timeframe,
+      links: project.links,
+      metrics: project.metrics,
+      cover: project.cover,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    },
+    layout,
+    assets: project.assets.map((asset, index) => ({
+      id: asset.id,
+      name: asset.name,
+      mimeType: asset.mimeType,
+      size: asset.size,
+      addedAt: asset.addedAt,
+      description: asset.description,
+      isHeroImage: asset.isHeroImage,
+      thumbnailUrl: asset.thumbnailUrl ?? null,
+      file: `assets/${assetFileMap.get(asset.id) ?? createFallbackAssetName(asset, index)}`,
+    })),
+  }
+}
+
+function createProjectPdf(project: ProjectMeta, blocks: ProjectLayoutBlock[]): Uint8Array {
+  const lines = buildPdfLines(project, blocks)
+  const margin = 54
+  const lineHeight = 16
+  const pageHeight = 842
+  const linesPerPage = Math.max(1, Math.floor((pageHeight - margin * 2) / lineHeight))
+  const pages = paginateLines(lines, linesPerPage)
+  const encoder = new TextEncoder()
+
+  type PdfObject = { id: number; data: Uint8Array }
+  const objects: PdfObject[] = []
+  let nextId = 1
+
+  const fontId = nextId++
+  const pagesId = nextId++
+  const catalogId = nextId++
+
+  const fontObject = buildStandardPdfObject(fontId, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', encoder)
+  objects.push({ id: fontId, data: fontObject })
+
+  const pageIds: number[] = []
+
+  pages.forEach(pageLines => {
+    const contentId = nextId++
+    const contentStream = buildPdfContentStream(pageLines, lineHeight, margin)
+    const contentObject = buildPdfStreamObject(contentId, contentStream, encoder)
+    objects.push({ id: contentId, data: contentObject })
+
+    const pageId = nextId++
+    pageIds.push(pageId)
+    const pageContent = `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595 842] /Contents ${contentId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`
+    const pageObject = buildStandardPdfObject(pageId, pageContent, encoder)
+    objects.push({ id: pageId, data: pageObject })
+  })
+
+  const kids = pageIds.map(id => `${id} 0 R`).join(' ')
+  const pagesObject = buildStandardPdfObject(
+    pagesId,
+    `<< /Type /Pages /Kids [${kids}] /Count ${pageIds.length} >>`,
+    encoder,
+  )
+  objects.push({ id: pagesId, data: pagesObject })
+
+  const catalogObject = buildStandardPdfObject(
+    catalogId,
+    `<< /Type /Catalog /Pages ${pagesId} 0 R >>`,
+    encoder,
+  )
+  objects.push({ id: catalogId, data: catalogObject })
+
+  objects.sort((a, b) => a.id - b.id)
+
+  const header = encoder.encode('%PDF-1.4\n')
+  const segments: Uint8Array[] = [header]
+  const offsets = new Array<number>(nextId).fill(0)
+  let position = header.length
+
+  objects.forEach(object => {
+    offsets[object.id] = position
+    segments.push(object.data)
+    position += object.data.length
+  })
+
+  const xrefStart = position
+  let xref = `xref\n0 ${nextId}\n0000000000 65535 f \n`
+  for (let id = 1; id < nextId; id += 1) {
+    const offset = offsets[id] ?? 0
+    xref += `${offset.toString().padStart(10, '0')} 00000 n \n`
+  }
+  const xrefBytes = encoder.encode(xref)
+
+  const trailer = `trailer\n<< /Size ${nextId} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`
+  const trailerBytes = encoder.encode(trailer)
+
+  segments.push(xrefBytes, trailerBytes)
+  return concatUint8Arrays(segments)
+}
+
+function buildStandardPdfObject(id: number, content: string, encoder: TextEncoder): Uint8Array {
+  return encoder.encode(`${id} 0 obj\n${content}\nendobj\n`)
+}
+
+function buildPdfStreamObject(id: number, content: string, encoder: TextEncoder): Uint8Array {
+  const streamBytes = encoder.encode(content)
+  const header = encoder.encode(`${id} 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`)
+  const footer = encoder.encode('\nendstream\nendobj\n')
+  return concatUint8Arrays([header, streamBytes, footer])
+}
+
+function buildPdfContentStream(lines: string[], lineHeight: number, margin: number): string {
+  const startX = margin
+  const startY = 842 - margin
+  const commands = ['BT', '/F1 12 Tf', `${lineHeight} TL`, `${startX} ${startY} Td`]
+
+  lines.forEach((line, index) => {
+    if (index === 0) {
+      commands.push(`(${escapePdfText(line)}) Tj`)
+    } else {
+      commands.push('T*')
+      commands.push(`(${escapePdfText(line)}) Tj`)
+    }
+  })
+
+  commands.push('ET')
+  return commands.join('\n')
+}
+
+function escapePdfText(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
+}
+
+function buildPdfLines(project: ProjectMeta, blocks: ProjectLayoutBlock[]): string[] {
+  const lines: string[] = []
+  const addBlank = () => {
+    if (lines.length === 0 || lines[lines.length - 1] === '') {
+      return
+    }
+    lines.push('')
+  }
+
+  lines.push(project.title || 'Untitled project')
+
+  if (project.summary) {
+    addBlank()
+    wrapMultilineText(project.summary).forEach(textLine => lines.push(textLine))
+  }
+
+  const statusLabel = projectStatusLabels[project.status] ?? project.status
+  const roleLabel = projectRoleLabels[project.role] ?? project.role
+  addBlank()
+  lines.push(`Status: ${statusLabel} • Role: ${roleLabel}`)
+
+  if (project.tags?.length) {
+    lines.push(`Tags: ${project.tags.join(', ')}`)
+  }
+
+  if (project.technologies?.length) {
+    lines.push(`Technologies: ${project.technologies.join(', ')}`)
+  }
+
+  if (project.timeframe) {
+    const timeframeParts: string[] = []
+    if (project.timeframe.start) timeframeParts.push(`Start ${project.timeframe.start}`)
+    if (project.timeframe.end) timeframeParts.push(`End ${project.timeframe.end}`)
+    if (project.timeframe.duration) timeframeParts.push(`Duration ${project.timeframe.duration}`)
+    if (timeframeParts.length > 0) {
+      lines.push(`Timeframe: ${timeframeParts.join(' • ')}`)
+    }
+  }
+
+  if (project.collaborators?.length) {
+    addBlank()
+    lines.push('Collaborators:')
+    project.collaborators.forEach(collaborator => {
+      const details = [collaborator.role, collaborator.company].filter(Boolean).join(', ')
+      lines.push(`  - ${collaborator.name}${details ? ` (${details})` : ''}`)
+    })
+  }
+
+  if (project.links?.length) {
+    addBlank()
+    lines.push('Links:')
+    project.links.forEach(link => {
+      lines.push(`  - ${(link.label || link.url)}: ${link.url}`)
+    })
+  }
+
+  const appendSection = (title: string, content?: string) => {
+    if (!content) {
+      return
+    }
+    addBlank()
+    lines.push(title)
+    wrapMultilineText(content).forEach(textLine => {
+      if (textLine === '') {
+        lines.push('')
+      } else {
+        lines.push(`  ${textLine}`)
+      }
+    })
+  }
+
+  appendSection('Problem', project.problem)
+  appendSection('Solution', project.solution)
+  appendSection('Outcomes', project.outcomes)
+
+  if (project.metrics) {
+    const metricLines: string[] = []
+    if (project.metrics.sales) metricLines.push(`Sales impact: ${project.metrics.sales}`)
+    if (project.metrics.engagement) metricLines.push(`Engagement: ${project.metrics.engagement}`)
+    if (project.metrics.other) metricLines.push(`Additional impact: ${project.metrics.other}`)
+
+    if (metricLines.length > 0 || (project.metrics.awards && project.metrics.awards.length > 0)) {
+      addBlank()
+      lines.push('Impact metrics')
+      metricLines.forEach(metric => {
+        wrapMultilineText(metric).forEach(textLine => {
+          lines.push(textLine ? `  ${textLine}` : '')
+        })
+      })
+      if (project.metrics.awards && project.metrics.awards.length > 0) {
+        lines.push('  Awards:')
+        project.metrics.awards.forEach(award => {
+          lines.push(`    - ${award}`)
+        })
+      }
+    }
+  }
+
+  addBlank()
+  lines.push('Layout overview')
+  const assetMap = new Map(project.assets.map(asset => [asset.id, asset]))
+
+  blocks.forEach((block, blockIndex) => {
+    lines.push(`Block ${blockIndex + 1}: ${block.type}`)
+    switch (block.type) {
+      case 'hero': {
+        const content = block.content as HeroBlockContent
+        if (content.title) {
+          lines.push(`  Title: ${content.title}`)
+        }
+        if (content.subtitle) {
+          wrapMultilineText(content.subtitle).forEach(textLine => {
+            lines.push(textLine ? `  ${textLine}` : '')
+          })
+        }
+        if (content.assetId) {
+          const asset = assetMap.get(content.assetId)
+          lines.push(`  Hero asset: ${asset?.name ?? content.assetId}`)
+        }
+        break
+      }
+      case 'text': {
+        const content = block.content as TextBlockContent
+        if (content.title) {
+          lines.push(`  Heading: ${content.title}`)
+        }
+        wrapMultilineText(content.text).forEach(textLine => {
+          lines.push(textLine ? `  ${textLine}` : '')
+        })
+        break
+      }
+      case 'image': {
+        const content = block.content as ImageBlockContent
+        if (content.assetId) {
+          const asset = assetMap.get(content.assetId)
+          lines.push(`  Image: ${asset?.name ?? content.assetId}`)
+        }
+        if (content.caption) {
+          wrapMultilineText(content.caption).forEach(textLine => {
+            lines.push(textLine ? `  ${textLine}` : '')
+          })
+        }
+        break
+      }
+      case 'gallery': {
+        const content = block.content as GalleryBlockContent
+        if (content.title) {
+          lines.push(`  Title: ${content.title}`)
+        }
+        content.items.forEach((item, itemIndex) => {
+          const asset = item.assetId ? assetMap.get(item.assetId) : null
+          const caption = item.caption ? ` — ${item.caption}` : ''
+          lines.push(`    • Item ${itemIndex + 1}: ${asset?.name ?? item.assetId ?? 'Unassigned'}${caption}`)
+        })
+        break
+      }
+      case 'video': {
+        const content = block.content as VideoBlockContent
+        if (content.assetId) {
+          const asset = assetMap.get(content.assetId)
+          lines.push(`  Video: ${asset?.name ?? content.assetId}`)
+        }
+        if (content.caption) {
+          wrapMultilineText(content.caption).forEach(textLine => {
+            lines.push(textLine ? `  ${textLine}` : '')
+          })
+        }
+        break
+      }
+      case 'metrics': {
+        const content = block.content as MetricsBlockContent
+        if (content.title) {
+          lines.push(`  Title: ${content.title}`)
+        }
+        content.metrics.forEach(metric => {
+          lines.push(`  - ${metric.label}: ${metric.value}`)
+        })
+        break
+      }
+      case 'link': {
+        const content = block.content as LinkBlockContent
+        if (content.title) {
+          lines.push(`  Title: ${content.title}`)
+        }
+        content.links.forEach(link => {
+          lines.push(`  - ${(link.label || link.url)}: ${link.url}`)
+        })
+        break
+      }
+      default:
+        break
+    }
+    addBlank()
+  })
+
+  addBlank()
+  lines.push(`Assets included: ${project.assets.length}`)
+  project.assets.forEach((asset, index) => {
+    const sizeKB = asset.size ? ` (${Math.max(1, Math.round(asset.size / 1024))} KB)` : ''
+    lines.push(`  ${index + 1}. ${asset.name || asset.id}${sizeKB}`)
+  })
+
+  while (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop()
+  }
+
+  if (lines.length === 0) {
+    lines.push('Portfolio export generated from the editor.')
+  }
+
+  return lines
+}
+
+function wrapMultilineText(text: string, maxLength = 90): string[] {
+  const paragraphs = text.split(/\r?\n/)
+  const lines: string[] = []
+
+  paragraphs.forEach((paragraph, index) => {
+    const trimmed = paragraph.trim()
+    if (trimmed.length === 0) {
+      if (lines.length === 0 || lines[lines.length - 1] === '') {
+        return
+      }
+      lines.push('')
+      return
+    }
+
+    const wrapped = wrapText(trimmed, maxLength)
+    wrapped.forEach(line => lines.push(line))
+    if (index < paragraphs.length - 1) {
+      lines.push('')
+    }
+  })
+
+  while (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop()
+  }
+
+  return lines
+}
+
+function wrapText(text: string, maxLength: number): string[] {
+  if (text.length <= maxLength) {
+    return [text]
+  }
+
+  const words = text.split(/\s+/)
+  const lines: string[] = []
+  let current = ''
+
+  words.forEach(word => {
+    if (!word) {
+      return
+    }
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length > maxLength) {
+      if (current) {
+        lines.push(current)
+        current = word
+      } else {
+        chunkWord(word, maxLength).forEach((chunk, index, arr) => {
+          if (index === arr.length - 1) {
+            current = chunk
+          } else {
+            lines.push(chunk)
+          }
+        })
+      }
+    } else {
+      current = candidate
+    }
+  })
+
+  if (current) {
+    lines.push(current)
+  }
+
+  return lines
+}
+
+function chunkWord(word: string, maxLength: number): string[] {
+  const chunks: string[] = []
+  for (let i = 0; i < word.length; i += maxLength) {
+    chunks.push(word.slice(i, i + maxLength))
+  }
+  return chunks
+}
+
+function paginateLines(lines: string[], linesPerPage: number): string[][] {
+  if (lines.length === 0) {
+    return [['Portfolio export generated from the editor.']]
+  }
+
+  const pages: string[][] = []
+  for (let index = 0; index < lines.length; index += linesPerPage) {
+    pages.push(lines.slice(index, index + linesPerPage))
+  }
+  return pages
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const candidate = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  if (candidate instanceof ArrayBuffer) {
+    return candidate
+  }
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return buffer
+}
+
+function concatUint8Arrays(arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, array) => sum + array.length, 0)
+  const result = new Uint8Array(totalLength)
+  let pointer = 0
+  arrays.forEach(array => {
+    result.set(array, pointer)
+    pointer += array.length
+  })
+  return result
+}
+
