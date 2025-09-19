@@ -3,7 +3,7 @@ import {
   Plus, Trash2, Move, Type, Image, Grid, Layout, Palette, Save, Eye, Undo, Redo,
   Settings, Copy, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline,
   Upload, RotateCw, Crop, ZoomIn, ZoomOut, GripVertical, ChevronUp, ChevronDown,
-  Edit3, Link, List, ListOrdered, MousePointer, Square, Menu, X, Smartphone,
+  Edit3, List, ListOrdered, MousePointer, Square, Menu, X, Smartphone,
   Monitor, Tablet, Play, Camera, Video, Share2, Heart, MessageCircle, Send,
   Bookmark, Globe, Code, Layers, Maximize, Info, FileText, Book, Printer,
   ChevronLeft, ChevronRight, Download, Folder, PanelLeftOpen, RefreshCw,
