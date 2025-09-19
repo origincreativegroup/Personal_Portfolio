@@ -25,6 +25,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 
 import './PortfolioForgeAIAnalysis.css'
+import PortfolioHierarchy from '../components/PortfolioHierarchy'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const DEFAULT_USER_ID = import.meta.env.VITE_ANALYSIS_USER_ID ?? 'demo-user'
@@ -499,6 +500,11 @@ export default function PortfolioForgeAIAnalysis() {
   const baseHeaders = useMemo(createBaseHeaders, [])
   const jsonHeaders = useMemo(() => createJsonHeaders(baseHeaders), [baseHeaders])
 
+  const handleHierarchyProjectSelect = useCallback((projectSlug: string) => {
+    setProjectIdInput(projectSlug)
+    setAnalysisError(null)
+  }, [])
+
   const persistProjectSuggestions = useCallback(async (updates: ProjectSuggestionPayload) => {
     const targetId = selectedProjectId ?? projectIdInput.trim()
     if (!targetId) {
@@ -931,6 +937,10 @@ export default function PortfolioForgeAIAnalysis() {
       <div className="analysis-page__layout">
         <aside className="analysis-sidebar analysis-panel">
           <div className="analysis-sidebar__control">
+            <PortfolioHierarchy
+              selectedProjectId={projectIdInput.trim().length > 0 ? projectIdInput.trim() : undefined}
+              onSelectProject={handleHierarchyProjectSelect}
+            />
             <form onSubmit={handleSubmit} className="analysis-launcher">
               <label htmlFor="analysis-project-id">Project ID</label>
               <div className="analysis-launcher__row">
