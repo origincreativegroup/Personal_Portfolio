@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { ProjectAsset } from '../intake/schema'
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -58,6 +59,10 @@ type BulkEditData = {
 type Props = {
   projectSlug: string
   projectTitle?: string
+  assets: ProjectAsset[]
+  onAssetUpload?: (files: FileList) => void
+  onAssetRemove?: (assetId: string) => void
+  onAssetUpdate?: (assetId: string, updates: Partial<ProjectAsset>) => void
 }
 
 const ICONS: Record<FileRecord['type'], LucideIcon> = {
@@ -119,7 +124,23 @@ function normaliseTag(value: string): string {
     .trim()
 }
 
-export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props) {
+function projectAssetToFileRecord(asset: ProjectAsset, projectSlug: string): FileRecord {
+  return {
+    id: asset.id,
+    name: asset.name,
+    type: guessFileType(asset.name),
+    size: formatBytes(asset.size),
+    sizeBytes: asset.size,
+    tags: [], // Assets don't have tags in the current schema
+    featured: false, // Could be extended
+    project: projectSlug,
+    uploadDate: new Date(asset.addedAt).toLocaleDateString(),
+    visibility: 'public', // Default visibility
+    folder: null, // Assets don't have folders currently
+  }
+}
+
+export default function ProjectFileExplorer({ projectSlug, projectTitle, assets, onAssetUpload, onAssetRemove, onAssetUpdate }: Props) {
   const [files, setFiles] = useState<FileRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -143,91 +164,17 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props
   const [copyTargetFolder, setCopyTargetFolder] = useState('')
   const [newFolderName, setNewFolderName] = useState('')
   const [customFolders, setCustomFolders] = useState<string[]>([])
+  const fileUploadRef = useRef<HTMLInputElement | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-
-    const loadFiles = async () => {
-      setIsLoading(true)
-      const prefix = `../../projects/${projectSlug}`
-      const projectEntries = Object.keys(PROJECT_GLOB).filter(path => path.startsWith(prefix))
-
-      if (projectEntries.length === 0) {
-        if (!cancelled) {
-          setFiles([])
-          setIsLoading(false)
-        }
-        return
-      }
-
-      try {
-        const entries = await Promise.all(
-          projectEntries.map(async path => {
-            const relativePath = path.slice(prefix.length + 1)
-            if (!relativePath) {
-              return null
-            }
-
-            const segments = relativePath.split('/')
-            const fileName = segments[segments.length - 1]
-            const folder = segments.length > 1 ? segments.slice(0, -1).join('/') : null
-
-            let size = '—'
-            let sizeBytes: number | null = null
-            try {
-              const loader = PROJECT_GLOB[path]
-              const contents = await loader()
-              const byteLength = new TextEncoder().encode(contents).length
-              size = formatBytes(byteLength)
-              sizeBytes = byteLength
-            } catch (error) {
-              console.warn('Unable to determine file size for', path, error)
-            }
-
-            const tags = segments
-              .slice(0, -1)
-              .map(segment => normaliseTag(segment))
-              .filter(Boolean)
-
-            const record: FileRecord = {
-              id: `${projectSlug}/${relativePath}`,
-              name: fileName,
-              type: guessFileType(fileName),
-              size,
-              sizeBytes,
-              tags,
-              featured: false,
-              project: projectSlug,
-              uploadDate: '—',
-              visibility: 'public',
-              folder,
-            }
-
-            return record
-          }),
-        )
-
-        if (!cancelled) {
-          const filteredEntries = entries.filter((entry): entry is FileRecord => Boolean(entry))
-          filteredEntries.sort((a, b) => a.name.localeCompare(b.name))
-          setFiles(filteredEntries)
-          setIsLoading(false)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Unable to load files for project', projectSlug, error)
-          setFiles([])
-          setIsLoading(false)
-        }
-      }
-    }
-
-    loadFiles()
-
-    return () => {
-      cancelled = true
-    }
-  }, [projectSlug])
+    setIsLoading(true)
+    // Convert ProjectAssets to FileRecords
+    const fileRecords = assets.map(asset => projectAssetToFileRecord(asset, projectSlug))
+    fileRecords.sort((a, b) => a.name.localeCompare(b.name))
+    setFiles(fileRecords)
+    setIsLoading(false)
+  }, [assets, projectSlug])
 
   useEffect(() => {
     setSelectedFiles([])
@@ -371,6 +318,11 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props
   }
 
   const handleBulkDelete = async () => {
+    if (onAssetRemove) {
+      selectedFiles.forEach(fileId => {
+        onAssetRemove(fileId)
+      })
+    }
     await simulateOperation(`Deleting ${selectionCount} file${selectionCount === 1 ? '' : 's'}`)
   }
 
@@ -397,6 +349,29 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props
       setCopyTargetFolder(value)
     }
     setNewFolderName('')
+  }
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault()
+    // Only set dragOver to false if we're leaving the drop zone entirely
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setIsDragOver(false)
+    }
+  }
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault()
+    setIsDragOver(false)
+    
+    const files = event.dataTransfer.files
+    if (files.length > 0 && onAssetUpload) {
+      onAssetUpload(files)
+    }
   }
 
   const BulkActionBar = () => (
@@ -588,9 +563,25 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props
           >
             {selectMode ? 'Exit select' : 'Select mode'}
           </button>
-          <button type="button" className="file-explorer__button file-explorer__button--primary">
+          <button 
+            type="button" 
+            className="file-explorer__button file-explorer__button--primary"
+            onClick={() => fileUploadRef.current?.click()}
+          >
             <Upload size={16} /> Upload files
           </button>
+          <input
+            ref={fileUploadRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(event) => {
+              if (event.target.files && onAssetUpload) {
+                onAssetUpload(event.target.files)
+                event.target.value = '' // Reset input
+              }
+            }}
+          />
         </div>
       </header>
 
@@ -691,7 +682,13 @@ export default function ProjectFileExplorer({ projectSlug, projectTitle }: Props
         </div>
       )}
 
-      <section className="file-explorer__content" aria-live="polite">
+      <section 
+        className={`file-explorer__content${isDragOver ? ' file-explorer__content--drag-over' : ''}`} 
+        aria-live="polite"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {isLoading && <div className="file-explorer__state">Loading project files…</div>}
         {!isLoading && filteredFiles.length === 0 && files.length === 0 && (
           <div className="file-explorer__state file-explorer__state--empty">

@@ -1,4 +1,4 @@
-import type { ProjectAsset, ProjectMeta } from '../intake/schema'
+import type { ProjectAsset, ProjectMeta, ProjectRole, ProjectStatus } from '../intake/schema'
 
 const KEY = 'pf-projects-v1'
 
@@ -52,15 +52,28 @@ const readStore = (): Store => {
     normalised[slug] = {
       title: typeof meta.title === 'string' ? meta.title : slug,
       slug,
+      summary: typeof meta.summary === 'string' ? meta.summary : undefined,
       problem: typeof meta.problem === 'string' ? meta.problem : '',
       solution: typeof meta.solution === 'string' ? meta.solution : '',
       outcomes: typeof meta.outcomes === 'string' ? meta.outcomes : '',
       tags,
       technologies: technologiesArray.length > 0 ? technologiesArray : undefined,
+      status: (typeof meta.status === 'string' && ['draft', 'cast', 'published'].includes(meta.status)) 
+        ? meta.status as ProjectStatus 
+        : 'draft',
+      role: (typeof meta.role === 'string' && ['designer', 'developer', 'director', 'project-manager', 'researcher', 'strategist', 'other'].includes(meta.role))
+        ? meta.role as ProjectRole
+        : 'other',
+      collaborators: Array.isArray(meta.collaborators) ? meta.collaborators : undefined,
+      timeframe: typeof meta.timeframe === 'object' ? meta.timeframe : undefined,
+      links: Array.isArray(meta.links) ? meta.links : undefined,
+      metrics: typeof meta.metrics === 'object' ? meta.metrics : undefined,
       cover: typeof meta.cover === 'string' ? meta.cover : undefined,
       createdAt,
       updatedAt,
       assets,
+      autoGenerateNarrative: typeof meta.autoGenerateNarrative === 'boolean' ? meta.autoGenerateNarrative : false,
+      aiGeneratedSummary: typeof meta.aiGeneratedSummary === 'string' ? meta.aiGeneratedSummary : undefined,
     }
   })
 

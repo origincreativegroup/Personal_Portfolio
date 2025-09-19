@@ -46,7 +46,7 @@ const formatBytes = (bytes: number) => {
   return `${value >= 10 || exponent === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`
 }
 
-const MAX_INLINE_ASSET_SIZE = 5 * 1024 * 1024
+// Remove size limits - allow unlimited asset uploads
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -173,10 +173,7 @@ export default function EditorPage() {
     const additions: ProjectAsset[] = []
 
     for (const file of files) {
-      if (file.size > MAX_INLINE_ASSET_SIZE) {
-        skipped.push(`${file.name} (${formatBytes(file.size)})`)
-        continue
-      }
+      // No size restrictions - allow all files
 
       try {
         const dataUrl = await readFileAsDataUrl(file)
@@ -329,7 +326,7 @@ export default function EditorPage() {
     )
   }
 
-  const assetLimitCopy = `Uploads are stored locally (max ${formatBytes(MAX_INLINE_ASSET_SIZE)} per file).`
+  const assetLimitCopy = `Uploads are stored locally with no size restrictions.`
 
   return (
     <div className="editor-page">
@@ -523,7 +520,14 @@ export default function EditorPage() {
         </section>
 
         <section className="editor-page__card editor-page__card--files">
-          <ProjectFileExplorer projectSlug={slug} projectTitle={project.title} />
+          <ProjectFileExplorer 
+            projectSlug={slug} 
+            projectTitle={project.title}
+            assets={project.assets}
+            onAssetUpload={handleAssetUpload}
+            onAssetRemove={handleAssetRemove}
+            onAssetUpdate={handleAssetUpdate}
+          />
         </section>
 
         <section className="editor-page__card editor-page__card--placeholder">

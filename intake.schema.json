@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portfolioforge.ai/schemas/intake.json",
+  "title": "Portfolio Intake Schema",
+  "description": "Streamlined intake form schema for portfolio projects with AI integration hooks",
+  "type": "object",
+  "properties": {
+    "coreInfo": {
+      "type": "object",
+      "title": "Core Project Information",
+      "description": "Essential project details and categorization",
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "Project Title",
+          "description": "Clear, descriptive name for the project",
+          "minLength": 1,
+          "maxLength": 100,
+          "examples": ["E-commerce redesign for local retailer", "Mobile banking app UX overhaul"]
+        },
+        "summary": {
+          "type": "string",
+          "title": "Short Summary",
+          "description": "1-2 sentence overview of what was built and its impact",
+          "maxLength": 300,
+          "examples": ["Redesigned checkout flow that reduced cart abandonment by 45% and increased mobile conversions."]
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags/Keywords",
+          "description": "Categorization tags for filtering and discovery",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [["ui-design", "e-commerce", "mobile-first", "conversion-optimization"]]
+        },
+        "heroImage": {
+          "type": "object",
+          "title": "Hero Image",
+          "description": "Primary visual representing the project",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "dataUrl": { "type": "string" },
+            "mimeType": { "type": "string" },
+            "size": { "type": "number" }
+          }
+        }
+      },
+      "required": ["title"],
+      "additionalProperties": false
+    },
+    "narrativeHooks": {
+      "type": "object",
+      "title": "Narrative Hooks",
+      "description": "Three-part story structure for compelling case studies",
+      "properties": {
+        "problem": {
+          "type": "string",
+          "title": "Problem Identified",
+          "description": "What challenge, pain point, or opportunity was discovered?",
+          "minLength": 10,
+          "examples": ["Users were abandoning checkout at a 67% rate due to complex multi-step process and poor mobile experience..."]
+        },
+        "solution": {
+          "type": "string",
+          "title": "Solution Created",
+          "description": "Approach, key decisions, and what was built",
+          "minLength": 10,
+          "examples": ["Redesigned checkout flow with single-page layout, mobile-first approach, and one-click payment options..."]
+        },
+        "outcomes": {
+          "type": "string",
+          "title": "Outcomes & Impact",
+          "description": "Measurable results, learnings, or long-term impact",
+          "minLength": 10,
+          "examples": ["Reduced cart abandonment to 23%, increased mobile conversions by 145%, generated additional $50K monthly revenue..."]
+        }
+      },
+      "required": ["problem", "solution", "outcomes"],
+      "additionalProperties": false
+    },
+    "projectDetails": {
+      "type": "object",
+      "title": "Project Details",
+      "description": "Metadata for AI resume/profile integration and portfolio organization",
+      "properties": {
+        "role": {
+          "type": "string",
+          "title": "Your Role",
+          "description": "Primary role in the project",
+          "enum": ["designer", "developer", "director", "project-manager", "researcher", "strategist", "other"],
+          "default": "other"
+        },
+        "status": {
+          "type": "string",
+          "title": "Project Status",
+          "description": "Current publication state",
+          "enum": ["draft", "cast", "published"],
+          "default": "draft"
+        },
+        "technologies": {
+          "type": "array",
+          "title": "Tools & Technologies",
+          "description": "Technologies, tools, and platforms used",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [["React", "Figma", "TypeScript", "PostgreSQL", "AWS"]]
+        },
+        "collaborators": {
+          "type": "array",
+          "title": "Collaborators",
+          "description": "Team members and collaborators",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "company": { "type": "string" }
+            },
+            "required": ["name"]
+          },
+          "examples": [[{"name": "Sarah Chen", "role": "UX Researcher"}, {"name": "Dev Team", "company": "Acme Corp"}]]
+        },
+        "timeframe": {
+          "type": "object",
+          "title": "Project Timeframe",
+          "description": "When the project took place",
+          "properties": {
+            "start": {
+              "type": "string",
+              "description": "Start date (ISO string or readable format)",
+              "examples": ["2024-01-15", "Q1 2024"]
+            },
+            "end": {
+              "type": "string",
+              "description": "End date (ISO string or readable format)",
+              "examples": ["2024-04-15", "Q2 2024"]
+            },
+            "duration": {
+              "type": "string",
+              "description": "Project duration",
+              "examples": ["3 months", "6 weeks", "ongoing"]
+            }
+          }
+        },
+        "links": {
+          "type": "array",
+          "title": "Project Links",
+          "description": "Related URLs (demo, repository, etc.)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["demo", "github", "behance", "youtube", "website", "other"]
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "label": {
+                "type": "string",
+                "description": "Optional display label"
+              }
+            },
+            "required": ["type", "url"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "title": "Metrics & Impact",
+      "description": "Quantifiable outcomes and achievements",
+      "properties": {
+        "sales": {
+          "type": "string",
+          "title": "Sales/Revenue Impact",
+          "description": "Financial impact or sales metrics",
+          "examples": ["$50K increase", "25% revenue boost", "Generated $100K ARR"]
+        },
+        "engagement": {
+          "type": "string",
+          "title": "Engagement/Usage Metrics",
+          "description": "User engagement, adoption, or usage statistics",
+          "examples": ["45% user engagement increase", "2x daily active users", "67% reduction in bounce rate"]
+        },
+        "awards": {
+          "type": "array",
+          "title": "Awards & Recognition",
+          "description": "Awards, recognitions, or notable achievements",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["Webby Award 2024", "Design Excellence Award", "Featured on Product Hunt"]]
+        },
+        "other": {
+          "type": "string",
+          "title": "Other Impact",
+          "description": "Additional measurable outcomes",
+          "examples": ["500K downloads", "Featured in TechCrunch", "Adopted by 50+ companies"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "systemHooks": {
+      "type": "object",
+      "title": "System Integration",
+      "description": "AI and automation configurations",
+      "properties": {
+        "autoGenerateNarrative": {
+          "type": "boolean",
+          "title": "Auto-Generate Narrative",
+          "description": "Whether to generate AI case study narrative",
+          "default": false
+        },
+        "projectType": {
+          "type": "string",
+          "title": "Project Association",
+          "description": "Whether this belongs to new or existing project",
+          "enum": ["new", "existing"],
+          "default": "new"
+        },
+        "existingProjectId": {
+          "type": "string",
+          "title": "Existing Project ID",
+          "description": "ID of existing project to add to (if applicable)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "title": "Project Assets",
+      "description": "Files, media, and supporting materials",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "mimeType": { "type": "string" },
+          "size": { "type": "number" },
+          "dataUrl": { "type": "string" },
+          "addedAt": { "type": "string", "format": "date-time" },
+          "description": { "type": "string" },
+          "isHeroImage": { "type": "boolean", "default": false }
+        },
+        "required": ["id", "name", "mimeType", "size", "dataUrl", "addedAt"]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "title": "System Metadata",
+      "description": "Automatically managed fields",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "slug": { "type": "string" },
+        "aiGeneratedSummary": { "type": "string" }
+      },
+      "required": ["createdAt", "slug"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["coreInfo", "narrativeHooks"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "coreInfo": {
+        "title": "E-commerce Mobile Checkout Redesign",
+        "summary": "Streamlined mobile checkout experience that reduced abandonment by 45% and increased conversions by 78%.",
+        "tags": ["ui-design", "mobile-ux", "e-commerce", "conversion-optimization"]
+      },
+      "narrativeHooks": {
+        "problem": "Mobile checkout abandonment was at 67% due to a complex 4-step process that wasn't optimized for small screens. Users struggled with form validation, payment selection, and address entry.",
+        "solution": "Redesigned the entire checkout flow as a single-page experience with progressive disclosure, smart form validation, auto-complete features, and one-click payment options integrated with Apple Pay and Google Pay.",
+        "outcomes": "Reduced mobile cart abandonment from 67% to 23%, increased mobile conversion rate by 78%, and generated an additional $85K in monthly revenue. The design became the template for the company's other properties."
+      },
+      "projectDetails": {
+        "role": "designer",
+        "status": "published",
+        "technologies": ["Figma", "React Native", "Stripe API", "Google Analytics"],
+        "collaborators": [
+          {"name": "Alex Kim", "role": "Frontend Developer"},
+          {"name": "Maria Santos", "role": "Product Manager"}
+        ],
+        "timeframe": {
+          "duration": "6 weeks",
+          "start": "2024-01-15",
+          "end": "2024-02-28"
+        },
+        "links": [
+          {"type": "demo", "url": "https://checkout-demo.example.com", "label": "Live Demo"},
+          {"type": "behance", "url": "https://behance.net/project/checkout-redesign"}
+        ]
+      },
+      "metrics": {
+        "sales": "$85K additional monthly revenue",
+        "engagement": "78% increase in mobile conversion rate",
+        "other": "Design system adopted across 3 other company properties"
+      },
+      "systemHooks": {
+        "autoGenerateNarrative": true,
+        "projectType": "new"
+      }
+    }
+  ]
+}

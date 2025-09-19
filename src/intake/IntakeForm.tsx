@@ -13,7 +13,18 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { newProject, type ProjectAsset, type ProjectMeta } from './schema'
+import { 
+  newProject, 
+  defaultTags, 
+  defaultTechnologies, 
+  projectRoleLabels, 
+  projectStatusLabels,
+  type ProjectAsset, 
+  type ProjectMeta, 
+  type ProjectRole, 
+  type ProjectStatus,
+  type ProjectLink
+} from './schema'
 import './IntakeForm.css'
 
 type Props = { onComplete(meta: ProjectMeta): void }
@@ -26,31 +37,37 @@ type UploadedFile = {
   dataUrl: string | null
 }
 
-const steps = ['Upload File', 'Choose Project', 'Fill Template', 'Review & Publish']
-
-const projectOptions = [
-  { id: 'web-dev', name: 'Web Development', count: 5 },
-  { id: 'design', name: 'UI/UX Design', count: 3 },
-  { id: 'mobile', name: 'Mobile Apps', count: 2 },
-]
-
-const categories = [
-  'Web Application',
-  'Mobile App',
-  'UI Design',
-  'Branding',
-  'Photography',
-  'Other',
-]
+const steps = ['Core Info', 'Narrative', 'Details', 'Review & Publish']
 
 const initialFormState = {
+  // Core Project Info
   title: '',
-  description: '',
-  category: '',
-  dateCompleted: '',
-  clientName: '',
-  projectUrl: '',
+  summary: '',
+  tags: '',
+  
+  // Narrative Hooks
+  problem: '',
+  solution: '',
+  outcomes: '',
+  
+  // Details for AI Resume/Profile Integration
+  role: 'other' as ProjectRole,
   technologies: '',
+  collaborators: '',
+  timeframe: '',
+  
+  // Links & References
+  links: '',
+  
+  // Metrics & Impact
+  sales: '',
+  engagement: '',
+  awards: '',
+  metricsOther: '',
+  
+  // System
+  status: 'draft' as ProjectStatus,
+  autoGenerateNarrative: false,
 }
 
 const parseList = (value: string) =>
@@ -63,8 +80,9 @@ export default function IntakeForm({ onComplete }: Props) {
   const [currentStep, setCurrentStep] = useState(0)
   const [dragOver, setDragOver] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
-  const [selectedProject, setSelectedProject] = useState('')
   const [formData, setFormData] = useState(initialFormState)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [liveMessage, setLiveMessage] = useState<string>('')
 
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -99,12 +117,22 @@ export default function IntakeForm({ onComplete }: Props) {
         preview: file.type.startsWith('image/') && result ? result : null,
         dataUrl: result,
       })
-
+      setFileError(null)
+      setCurrentStep(1)
+      setLiveMessage(`File ${file.name} uploaded successfully.`)
+    }
+    reader.onerror = () => {
+      setUploadedFile(null)
+      setFileError('We couldn\'t read that file. Try choosing a different file or format.')
+      setLiveMessage('File upload failed. Please try again.')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
     reader.readAsDataURL(file)
   }
 
-  const handleInputChange = (field: keyof typeof initialFormState, value: string) => {
+  const handleInputChange = (field: keyof typeof initialFormState, value: string | boolean | ProjectRole | ProjectStatus) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -123,9 +151,12 @@ export default function IntakeForm({ onComplete }: Props) {
     setCurrentStep(0)
     setDragOver(false)
     setUploadedFile(null)
-    setSelectedProject('')
     setFormData(initialFormState)
-
+    setFileError(null)
+    setLiveMessage('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -137,11 +168,6 @@ export default function IntakeForm({ onComplete }: Props) {
     return `${size.toFixed(size >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`
   }
 
-  const getSelectedProjectName = () => {
-    if (!selectedProject) return ''
-    if (selectedProject === 'new') return 'New Project'
-    return projectOptions.find(option => option.id === selectedProject)?.name ?? ''
-  }
 
   const createAssetFromUpload = (file: UploadedFile): ProjectAsset | null => {
     if (!file.dataUrl) {
@@ -169,59 +195,57 @@ export default function IntakeForm({ onComplete }: Props) {
     }
 
     const meta = newProject(title)
-    meta.problem = formData.description.trim()
+    
+    // Core Info
+    meta.summary = formData.summary.trim()
+    meta.tags = parseList(formData.tags)
+    
+    // Narrative Hooks
+    meta.problem = formData.problem.trim()
+    meta.solution = formData.solution.trim()
+    meta.outcomes = formData.outcomes.trim()
+    
+    // Details
+    meta.role = formData.role
+    meta.status = formData.status
+    meta.technologies = parseList(formData.technologies)
+    meta.autoGenerateNarrative = formData.autoGenerateNarrative
+    
+    // Collaborators
+    if (formData.collaborators.trim()) {
+      meta.collaborators = parseList(formData.collaborators).map(name => ({ name }))
+    }
+    
+    // Timeframe
+    if (formData.timeframe.trim()) {
+      meta.timeframe = { duration: formData.timeframe.trim() }
+    }
+    
+    // Links
+    if (formData.links.trim()) {
+      meta.links = parseList(formData.links).map(url => ({
+        type: 'other' as const,
+        url: url.trim(),
+      }))
+    }
+    
+    // Metrics
+    const metrics: any = {}
+    if (formData.sales.trim()) metrics.sales = formData.sales.trim()
+    if (formData.engagement.trim()) metrics.engagement = formData.engagement.trim()
+    if (formData.awards.trim()) metrics.awards = parseList(formData.awards)
+    if (formData.metricsOther.trim()) metrics.other = formData.metricsOther.trim()
+    if (Object.keys(metrics).length > 0) {
+      meta.metrics = metrics
+    }
 
-    const solutionParts: string[] = []
-    const projectName = getSelectedProjectName()
-    if (projectName) {
-      solutionParts.push(`Project: ${projectName}`)
-    }
-    if (formData.clientName.trim()) {
-      solutionParts.push(`Client: ${formData.clientName.trim()}`)
-    }
-    if (formData.category.trim()) {
-      solutionParts.push(`Category: ${formData.category.trim()}`)
-    }
-    if (formData.projectUrl.trim()) {
-      solutionParts.push(formData.projectUrl.trim())
-    }
-    meta.solution = solutionParts.join(' • ')
-
-    const outcomes: string[] = []
-    if (formData.dateCompleted) {
-      const completedDate = new Date(`${formData.dateCompleted}-01`)
-      outcomes.push(
-        `Completed ${completedDate.toLocaleDateString(undefined, {
-          month: 'long',
-          year: 'numeric',
-        })}`,
-      )
-    }
-    let primaryAsset: ProjectAsset | null = null
+    // Add uploaded file as asset
     if (uploadedFile) {
-      outcomes.push(`Primary asset: ${uploadedFile.name}`)
-      primaryAsset = createAssetFromUpload(uploadedFile)
-    }
-    meta.outcomes = outcomes.join(' • ')
-
-    const tagSet = new Set<string>()
-    if (formData.category.trim()) {
-      tagSet.add(formData.category.trim())
-    }
-    if (projectName) {
-      tagSet.add(projectName)
-    }
-    const technologies = parseList(formData.technologies)
-    technologies.forEach(tagSet.add, tagSet)
-    if (tagSet.size > 0) {
-      meta.tags = Array.from(tagSet)
-    }
-    if (technologies.length > 0) {
-      meta.technologies = technologies
-    }
-
-    if (primaryAsset) {
-      meta.assets = [primaryAsset]
+      const primaryAsset = createAssetFromUpload(uploadedFile)
+      if (primaryAsset) {
+        meta.assets = [primaryAsset]
+        meta.cover = primaryAsset.id // Set as hero image
+      }
     }
 
     onComplete(meta)
@@ -302,147 +326,9 @@ export default function IntakeForm({ onComplete }: Props) {
       <main className="upload-flow__main">
         {currentStep === 0 && (
           <div className="upload-flow__section">
-            <div className="upload-flow__intro">
-              <h2>Upload your work</h2>
-              <p>Add images, documents, or motion assets that capture this project.</p>
-            </div>
-
-            <div
-              className={`upload-flow__dropzone${dragOver ? ' upload-flow__dropzone--active' : ''}`}
-              onDrop={handleDrop}
-              onDragOver={event => {
-                event.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={handleDropzoneKeyDown}
-              aria-describedby={`${dropzoneDescriptionId} ${dropzoneHintId} ${dropzoneHelpId}`}
-            >
-              <Upload size={42} className="upload-flow__dropzone-icon" />
-
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="upload-flow__file-input"
-              accept="image/*,video/*,.pdf,.mp4,.mov,.png,.jpg,.jpeg,.jgp,.eps,.esp,.doc,.docx"
-              onChange={event => handleFileSelect(event.target.files?.[0])}
-            />
-
-            {fileError && (
-              <div className="upload-flow__error" role="alert">
-                {fileError}
-              </div>
-            )}
-
-            <div className="upload-flow__option-grid">
-              <button type="button" className="upload-flow__option-btn" onClick={() => fileInputRef.current?.click()}>
-                <Image size={24} />
-                <span>Browse images</span>
-              </button>
-              <button type="button" className="upload-flow__option-btn" onClick={() => fileInputRef.current?.click()}>
-                <FileText size={24} />
-                <span>Browse documents</span>
-              </button>
-            </div>
-
-            <div className="upload-flow__helper-actions">
-              <button type="button" className="upload-flow__secondary-button" onClick={handleSkipUpload}>
-                Skip for now
-              </button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 1 && (
-          <div className="upload-flow__section">
-            {uploadedFile && (
-              <div className="upload-flow__file-card">
-                {uploadedFile.preview ? (
-                  <img src={uploadedFile.preview} alt="Preview" className="upload-flow__file-thumb" />
-                ) : (
-                  <div className="upload-flow__file-thumb upload-flow__file-thumb--placeholder">
-                    <FileText size={20} />
-                  </div>
-                )}
-                <div className="upload-flow__file-meta">
-                  <strong>{uploadedFile.name}</strong>
-                  <span>{formatFileSize(uploadedFile.size)}</span>
-                </div>
-              </div>
-            )}
-
             <div className="upload-flow__intro upload-flow__intro--left">
-              <h2>Choose project</h2>
-              <p>Add this file to an existing project or start something new.</p>
-            </div>
-
-            <div className="upload-flow__project-list">
-              {projectOptions.map(option => {
-                const isActive = selectedProject === option.id
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelectedProject(option.id)}
-                    className={`upload-flow__project-btn${isActive ? ' upload-flow__project-btn--active' : ''}`}
-                  >
-                    <div className="upload-flow__project-body">
-                      <Folder size={20} />
-                      <div>
-                        <p>{option.name}</p>
-                        <span>{option.count} items</span>
-                      </div>
-                    </div>
-                    <span
-                      className={`upload-flow__project-indicator${isActive ? ' upload-flow__project-indicator--active' : ''}`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                )
-              })}
-
-              <button
-                type="button"
-                onClick={() => setSelectedProject('new')}
-                className={`upload-flow__project-btn upload-flow__project-btn--dashed${
-                  selectedProject === 'new' ? ' upload-flow__project-btn--active' : ''
-                }`}
-              >
-                <div className="upload-flow__project-body upload-flow__project-body--center">
-                  <Plus size={20} />
-                  <span>Create new project</span>
-                </div>
-                <span
-                  className={`upload-flow__project-indicator${
-                    selectedProject === 'new' ? ' upload-flow__project-indicator--active' : ''
-                  }`}
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={nextStep}
-              disabled={!selectedProject}
-              className="upload-flow__primary-button upload-flow__primary-button--full"
-            >
-              Continue
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        )}
-
-        {currentStep === 2 && (
-          <div className="upload-flow__section">
-            <div className="upload-flow__intro upload-flow__intro--left">
-              <h2>Project details</h2>
-              <p>Give us the essentials so you can publish with confidence.</p>
+              <h2>Core Project Info</h2>
+              <p>Start with the basics - what is this project and how would you categorize it?</p>
             </div>
 
             <div className="upload-flow__form">
@@ -452,89 +338,69 @@ export default function IntakeForm({ onComplete }: Props) {
                   type="text"
                   value={formData.title}
                   onChange={event => handleInputChange('title', event.target.value)}
-                  placeholder="E-commerce mobile app redesign"
+                  placeholder="E-commerce redesign for local retailer"
                   className="upload-flow__input"
                   required
                 />
               </label>
 
               <label className="upload-flow__field">
-                <span>Description</span>
+                <span>Short summary</span>
                 <textarea
-                  value={formData.description}
-                  onChange={event => handleInputChange('description', event.target.value)}
-                  placeholder="Describe the work, challenges, and impact."
-                  rows={4}
+                  value={formData.summary}
+                  onChange={event => handleInputChange('summary', event.target.value)}
+                  placeholder="1-2 sentence overview of what you built and its impact"
+                  rows={2}
                   className="upload-flow__textarea"
                 />
+                <small>This helps readers quickly understand your work</small>
               </label>
 
               <label className="upload-flow__field">
-                <span>Category</span>
-                <select
-                  value={formData.category}
-                  onChange={event => handleInputChange('category', event.target.value)}
-                  className="upload-flow__select"
+                <span>Tags/keywords</span>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={event => handleInputChange('tags', event.target.value)}
+                  placeholder="ui-design, e-commerce, mobile-first"
+                  className="upload-flow__input"
+                />
+                <small>Common tags: {defaultTags.slice(0, 5).join(', ')}</small>
+              </label>
+
+              <div className="upload-flow__hero-upload">
+                <h3>Add a hero image (optional)</h3>
+                <div
+                  className={`upload-flow__dropzone upload-flow__dropzone--compact${dragOver ? ' upload-flow__dropzone--active' : ''}`}
+                  onDrop={handleDrop}
+                  onDragOver={event => {
+                    event.preventDefault()
+                    setDragOver(true)
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onClick={() => fileInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={handleDropzoneKeyDown}
                 >
-                  <option value="">Select category</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <Upload size={24} className="upload-flow__dropzone-icon" />
+                  <span>{uploadedFile ? uploadedFile.name : 'Drop image or click to upload'}</span>
+                </div>
 
-              <div className="upload-flow__field-grid">
-                <label className="upload-flow__field">
-                  <span>
-                    <Calendar size={16} /> Completed
-                  </span>
-                  <input
-                    type="month"
-                    value={formData.dateCompleted}
-                    onChange={event => handleInputChange('dateCompleted', event.target.value)}
-                    className="upload-flow__input"
-                  />
-                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="upload-flow__file-input"
+                  accept="image/*"
+                  onChange={event => handleFileSelect(event.target.files?.[0])}
+                />
 
-                <label className="upload-flow__field">
-                  <span>
-                    <Globe size={16} /> Live URL
-                  </span>
-                  <input
-                    type="url"
-                    value={formData.projectUrl}
-                    onChange={event => handleInputChange('projectUrl', event.target.value)}
-                    placeholder="https://..."
-                    className="upload-flow__input"
-                  />
-                </label>
+                {fileError && (
+                  <div className="upload-flow__error" role="alert">
+                    {fileError}
+                  </div>
+                )}
               </div>
-
-              <label className="upload-flow__field">
-                <span>
-                  <Tag size={16} /> Technologies used
-                </span>
-                <input
-                  type="text"
-                  value={formData.technologies}
-                  onChange={event => handleInputChange('technologies', event.target.value)}
-                  placeholder="React, Node.js, Tailwind CSS"
-                  className="upload-flow__input"
-                />
-              </label>
-
-              <label className="upload-flow__field">
-                <span>Client / Company</span>
-                <input
-                  type="text"
-                  value={formData.clientName}
-                  onChange={event => handleInputChange('clientName', event.target.value)}
-                  placeholder="Company name or Personal Project"
-                  className="upload-flow__input"
-                />
-              </label>
             </div>
 
             <button
@@ -543,7 +409,228 @@ export default function IntakeForm({ onComplete }: Props) {
               disabled={!formData.title.trim()}
               className="upload-flow__primary-button upload-flow__primary-button--full"
             >
-              Review &amp; publish
+              Continue to Narrative
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {currentStep === 1 && (
+          <div className="upload-flow__section">
+            <div className="upload-flow__intro upload-flow__intro--left">
+              <h2>Narrative Hooks</h2>
+              <p>Instead of one vague description, let's break your story into three focused parts:</p>
+            </div>
+
+            <div className="upload-flow__form">
+              <label className="upload-flow__field">
+                <span>What was the problem you identified? *</span>
+                <textarea
+                  value={formData.problem}
+                  onChange={event => handleInputChange('problem', event.target.value)}
+                  placeholder="Users were abandoning checkout at a 67% rate due to complex multi-step process and poor mobile experience..."
+                  rows={3}
+                  className="upload-flow__textarea"
+                  required
+                />
+                <small>Describe the challenge, pain point, or opportunity you discovered</small>
+              </label>
+
+              <label className="upload-flow__field">
+                <span>What solution did you create? *</span>
+                <textarea
+                  value={formData.solution}
+                  onChange={event => handleInputChange('solution', event.target.value)}
+                  placeholder="Redesigned checkout flow with single-page layout, mobile-first approach, and one-click payment options..."
+                  rows={3}
+                  className="upload-flow__textarea"
+                  required
+                />
+                <small>Explain your approach, key decisions, and what you built</small>
+              </label>
+
+              <label className="upload-flow__field">
+                <span>What were the outcomes/impact? *</span>
+                <textarea
+                  value={formData.outcomes}
+                  onChange={event => handleInputChange('outcomes', event.target.value)}
+                  placeholder="Reduced cart abandonment to 23%, increased mobile conversions by 145%, generated additional $50K monthly revenue..."
+                  rows={3}
+                  className="upload-flow__textarea"
+                  required
+                />
+                <small>Share measurable results, learnings, or long-term impact</small>
+              </label>
+
+              <label className="upload-flow__field">
+                <span>
+                  <input
+                    type="checkbox"
+                    checked={formData.autoGenerateNarrative}
+                    onChange={event => handleInputChange('autoGenerateNarrative', event.target.checked)}
+                    style={{ marginRight: '0.5rem' }}
+                  />
+                  Auto-generate draft narrative after upload
+                </span>
+                <small>AI will create a polished case study narrative from your responses</small>
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={nextStep}
+              disabled={!formData.problem.trim() || !formData.solution.trim() || !formData.outcomes.trim()}
+              className="upload-flow__primary-button upload-flow__primary-button--full"
+            >
+              Continue to Details
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {currentStep === 2 && (
+          <div className="upload-flow__section">
+            <div className="upload-flow__intro upload-flow__intro--left">
+              <h2>Project Details</h2>
+              <p>Add details for AI resume/profile integration and portfolio organization.</p>
+            </div>
+
+            <div className="upload-flow__form">
+              <div className="upload-flow__field-grid">
+                <label className="upload-flow__field">
+                  <span>Your role in project</span>
+                  <select
+                    value={formData.role}
+                    onChange={event => handleInputChange('role', event.target.value as ProjectRole)}
+                    className="upload-flow__select"
+                  >
+                    {Object.entries(projectRoleLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="upload-flow__field">
+                  <span>Project status</span>
+                  <select
+                    value={formData.status}
+                    onChange={event => handleInputChange('status', event.target.value as ProjectStatus)}
+                    className="upload-flow__select"
+                  >
+                    {Object.entries(projectStatusLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="upload-flow__field">
+                <span>Tools and technologies used</span>
+                <input
+                  type="text"
+                  value={formData.technologies}
+                  onChange={event => handleInputChange('technologies', event.target.value)}
+                  placeholder="React, Figma, TypeScript, PostgreSQL"
+                  className="upload-flow__input"
+                />
+                <small>Popular tools: {defaultTechnologies.slice(0, 6).join(', ')}</small>
+              </label>
+
+              <div className="upload-flow__field-grid">
+                <label className="upload-flow__field">
+                  <span>Collaborators/teams</span>
+                  <input
+                    type="text"
+                    value={formData.collaborators}
+                    onChange={event => handleInputChange('collaborators', event.target.value)}
+                    placeholder="Sarah Chen, Dev Team, Marketing"
+                    className="upload-flow__input"
+                  />
+                </label>
+
+                <label className="upload-flow__field">
+                  <span>Timeframe</span>
+                  <input
+                    type="text"
+                    value={formData.timeframe}
+                    onChange={event => handleInputChange('timeframe', event.target.value)}
+                    placeholder="3 months, Q1 2024, ongoing"
+                    className="upload-flow__input"
+                  />
+                </label>
+              </div>
+
+              <label className="upload-flow__field">
+                <span>Links (demo, GitHub, etc.)</span>
+                <input
+                  type="text"
+                  value={formData.links}
+                  onChange={event => handleInputChange('links', event.target.value)}
+                  placeholder="https://demo.com, https://github.com/user/repo"
+                  className="upload-flow__input"
+                />
+              </label>
+
+              <div className="upload-flow__metrics-section">
+                <h3>Metrics & Impact (optional)</h3>
+                <div className="upload-flow__field-grid">
+                  <label className="upload-flow__field">
+                    <span>Sales/Revenue impact</span>
+                    <input
+                      type="text"
+                      value={formData.sales}
+                      onChange={event => handleInputChange('sales', event.target.value)}
+                      placeholder="$50K increase, 25% revenue boost"
+                      className="upload-flow__input"
+                    />
+                  </label>
+
+                  <label className="upload-flow__field">
+                    <span>Engagement/Usage metrics</span>
+                    <input
+                      type="text"
+                      value={formData.engagement}
+                      onChange={event => handleInputChange('engagement', event.target.value)}
+                      placeholder="45% user engagement increase"
+                      className="upload-flow__input"
+                    />
+                  </label>
+                </div>
+
+                <label className="upload-flow__field">
+                  <span>Awards/Recognition</span>
+                  <input
+                    type="text"
+                    value={formData.awards}
+                    onChange={event => handleInputChange('awards', event.target.value)}
+                    placeholder="Webby Award 2024, Design Excellence"
+                    className="upload-flow__input"
+                  />
+                </label>
+
+                <label className="upload-flow__field">
+                  <span>Other measurable impact</span>
+                  <input
+                    type="text"
+                    value={formData.metricsOther}
+                    onChange={event => handleInputChange('metricsOther', event.target.value)}
+                    placeholder="500K downloads, featured on Product Hunt"
+                    className="upload-flow__input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={nextStep}
+              className="upload-flow__primary-button upload-flow__primary-button--full"
+            >
+              Review & Publish
               <ArrowRight size={18} />
             </button>
           </div>
@@ -563,20 +650,22 @@ export default function IntakeForm({ onComplete }: Props) {
 
               <div className="upload-flow__review-headline">
                 <h3>{formData.title || 'Untitled project'}</h3>
-                {formData.description && <p>{formData.description}</p>}
+                {formData.summary && <p>{formData.summary}</p>}
               </div>
 
               <dl className="upload-flow__review-list">
-                {getSelectedProjectName() && (
+                <div>
+                  <dt>Role</dt>
+                  <dd>{projectRoleLabels[formData.role]}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{projectStatusLabels[formData.status]}</dd>
+                </div>
+                {formData.tags && (
                   <div>
-                    <dt>Project</dt>
-                    <dd>{getSelectedProjectName()}</dd>
-                  </div>
-                )}
-                {formData.category && (
-                  <div>
-                    <dt>Category</dt>
-                    <dd>{formData.category}</dd>
+                    <dt>Tags</dt>
+                    <dd>{formData.tags}</dd>
                   </div>
                 )}
                 {formData.technologies && (
@@ -585,30 +674,56 @@ export default function IntakeForm({ onComplete }: Props) {
                     <dd>{formData.technologies}</dd>
                   </div>
                 )}
-                {formData.dateCompleted && (
+                {formData.collaborators && (
                   <div>
-                    <dt>Completed</dt>
+                    <dt>Collaborators</dt>
+                    <dd>{formData.collaborators}</dd>
+                  </div>
+                )}
+                {formData.timeframe && (
+                  <div>
+                    <dt>Timeframe</dt>
+                    <dd>{formData.timeframe}</dd>
+                  </div>
+                )}
+                {formData.links && (
+                  <div>
+                    <dt>Links</dt>
+                    <dd>{formData.links}</dd>
+                  </div>
+                )}
+                {(formData.sales || formData.engagement || formData.awards || formData.metricsOther) && (
+                  <div>
+                    <dt>Impact</dt>
                     <dd>
-                      {new Date(`${formData.dateCompleted}-01`).toLocaleDateString(undefined, {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {[formData.sales, formData.engagement, formData.awards, formData.metricsOther]
+                        .filter(Boolean)
+                        .join(' • ')}
                     </dd>
                   </div>
                 )}
-                {formData.clientName && (
+                {formData.autoGenerateNarrative && (
                   <div>
-                    <dt>Client</dt>
-                    <dd>{formData.clientName}</dd>
-                  </div>
-                )}
-                {formData.projectUrl && (
-                  <div>
-                    <dt>URL</dt>
-                    <dd>{formData.projectUrl}</dd>
+                    <dt>AI Features</dt>
+                    <dd>Auto-generate narrative enabled</dd>
                   </div>
                 )}
               </dl>
+
+              <div className="upload-flow__narrative-preview">
+                <h4>Project Narrative</h4>
+                <div className="upload-flow__narrative-sections">
+                  <div>
+                    <strong>Problem:</strong> {formData.problem || 'Not specified'}
+                  </div>
+                  <div>
+                    <strong>Solution:</strong> {formData.solution || 'Not specified'}
+                  </div>
+                  <div>
+                    <strong>Outcomes:</strong> {formData.outcomes || 'Not specified'}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="upload-flow__action-grid">

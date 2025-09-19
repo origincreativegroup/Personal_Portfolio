@@ -1391,6 +1391,17 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border-radius: 12px;
+  border: 2px dashed transparent;
+  padding: 1rem;
+  margin: -1rem;
+}
+
+.file-explorer__content--drag-over {
+  background-color: #f0f9ff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
 .file-explorer__state {
