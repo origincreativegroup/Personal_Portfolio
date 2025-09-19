@@ -1,7 +1,8 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 import { analysisQueue } from '../jobs/analysisQueue';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
+import prisma from '../lib/prisma';
+import { projectEventBus } from '../lib/projectEvents';
 
 const ensureStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
@@ -162,7 +163,18 @@ const normalizeInsights = (value: unknown): SerializedInsight[] => {
 };
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
+const ensureWorkspaceAccess = (req: AuthenticatedRequest, workspaceId: string): boolean => {
+  const membership = req.user?.workspaceMemberships?.find((m) => m.workspaceId === workspaceId);
+  if (!membership) {
+    return false;
+  }
+  req.workspace = {
+    id: workspaceId,
+    role: membership.role,
+  };
+  return true;
+};
 
 router.post('/projects/:projectId/analyze', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
@@ -172,7 +184,6 @@ router.post('/projects/:projectId/analyze', requireAuth, async (req: Authenticat
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
       },
       include: {
         files: true
@@ -184,20 +195,50 @@ router.post('/projects/:projectId/analyze', requireAuth, async (req: Authenticat
       return;
     }
 
+    const hasAccess = ensureWorkspaceAccess(req, project.workspaceId);
+
+    if (!hasAccess) {
+      res.status(403).json({ error: 'Forbidden: workspace access required' });
+      return;
+    }
+
     if (project.files.length === 0) {
       res.status(400).json({ error: 'Project must have files to analyze' });
       return;
     }
 
+    await prisma.projectAnalysis.upsert({
+      where: { projectId },
+      update: {
+        status: 'queued',
+        triggeredById: userId,
+        workspaceId: project.workspaceId,
+      },
+      create: {
+        projectId,
+        workspaceId: project.workspaceId,
+        status: 'queued',
+        triggeredById: userId,
+      },
+    });
+
     for (const file of project.files) {
-      await analysisQueue.add('analyze-file', { fileId: file.id });
+      await analysisQueue.add('analyze-file', { fileId: file.id, workspaceId: project.workspaceId, triggeredById: userId });
     }
 
-    await analysisQueue.add('analyze-project', { projectId }, {
+    await analysisQueue.add('analyze-project', { projectId, workspaceId: project.workspaceId, triggeredById: userId }, {
       delay: project.files.length * 5000
     });
 
-    res.json({ 
+    projectEventBus.emitEvent({
+      workspaceId: project.workspaceId,
+      projectId,
+      type: 'analysis.triggered',
+      actorId: userId,
+      data: { filesQueued: project.files.length },
+    });
+
+    res.json({
       message: 'Analysis started',
       projectId,
       filesQueued: project.files.length
@@ -217,7 +258,6 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
       },
       include: {
         files: {
@@ -230,6 +270,13 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
 
     if (!project) {
       res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const hasAccess = ensureWorkspaceAccess(req, project.workspaceId);
+
+    if (!hasAccess) {
+      res.status(403).json({ error: 'Forbidden: workspace access required' });
       return;
     }
 
@@ -302,12 +349,18 @@ router.get('/projects/:projectId/analysis/results', requireAuth, async (req: Aut
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId
       }
     });
 
     if (!project) {
       res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const hasAccess = ensureWorkspaceAccess(req, project.workspaceId);
+
+    if (!hasAccess) {
+      res.status(403).json({ error: 'Forbidden: workspace access required' });
       return;
     }
 

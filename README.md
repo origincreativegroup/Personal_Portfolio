@@ -3,10 +3,10 @@
 A monorepo that powers a modern portfolio workflow: a Vite/React intake app for capturing case studies, a structured project filesystem for long-term storage, and an Express/Prisma service that orchestrates AI-assisted analysis jobs.
 
 ## Features
-- **Guided project intake.** Responsive React forms help capture problem, solution, impact, evidence, assets, and metadata, then route creators into a rich editor experience.
-- **Hybrid browser storage.** Projects are persisted in localStorage with an automatic IndexedDB upgrade, including migration, quota tracking, and manual cleanup utilities.
-- **AI analysis pipeline.** The Node/Express backend queues uploads for processing with OpenAI, Bull, Prisma, and PostgreSQL/Redis infrastructure, providing confidence metrics and structured insights.
-- **Repeatable content structure.** A `projects/` directory schema plus a Python scaffolding script keep briefs, metadata, and assets consistent across teammates and automation.
+- **Workspace-aware authentication.** Secure email/password auth issues short-lived access tokens and refresh cookies so multiple teammates can collaborate across shared workspaces.
+- **Server-backed persistence.** Projects, files, revisions, and invites are stored in PostgreSQL via Prisma models with optimistic concurrency and activity streams delivered over Server-Sent Events.
+- **AI analysis pipeline.** The Express backend coordinates Bull queues, Redis, and OpenAI to extract insights, track confidence, and allow one-click application of AI suggestions.
+- **Legacy migration support.** Any projects captured in `localStorage`/IndexedDB are automatically imported into a user’s first workspace the moment they log in.
 
 ## Repository structure
 ```
@@ -22,32 +22,29 @@ A monorepo that powers a modern portfolio workflow: a Vite/React intake app for 
 ```
 
 ## Quick start (front-end)
-1. Install Node.js 20+ and npm (uses ESM modules and Vite).
+1. Install Node.js 20+ and npm (Vite + React Query require modern tooling).
 2. Install dependencies and start the Vite dev server:
    ```bash
    npm install
    npm run dev
    ```
-3. Visit <http://localhost:5173>. The intake app stores data locally, so no backend is required for basic project capture and editing.
+3. Visit <http://localhost:5173>. The UI now expects the authenticated API, so keep the backend (described below) running for project and analysis data.
 
 ## Running the full stack
 The AI analysis views expect the backend, database, and Redis queue to be running.
 
 ### Manual setup
-1. **Environment variables.** Create a `server/.env` file (or export variables in your shell):
+1. **Environment variables.** Copy `server/.env.sample` to `server/.env` and adjust secrets:
    ```bash
-   OPENAI_API_KEY=sk-...
-   DATABASE_URL=postgresql://postgres:password@localhost:5432/portfolioforge
-   REDIS_URL=redis://localhost:6379
-   DEV_USER_ID=demo-user   # optional default user for local development
-   PORT=3001               # optional override
+   cp server/.env.sample server/.env
+   # then edit JWT secrets, database URL, OpenAI key, etc.
    ```
 2. **Install dependencies.**
    ```bash
    cd server
    npm install
    ```
-3. **Prepare the database.** Ensure PostgreSQL is reachable via `DATABASE_URL`, then run:
+3. **Prepare the database.** Ensure PostgreSQL is reachable via `DATABASE_URL`, then run the Prisma migrations:
    ```bash
    npx prisma migrate deploy
    ```
@@ -55,7 +52,7 @@ The AI analysis views expect the backend, database, and Redis queue to be runnin
    ```bash
    npm run dev            # express server with hot reload (ts-node)
    ```
-   The API listens on `http://localhost:3001` by default. Configure the front-end with `VITE_API_BASE_URL` or rely on the localhost fallback.
+   The API listens on `http://localhost:3001` by default. Configure the front-end with `VITE_API_BASE_URL` if you are not running locally.
 
 ### Docker Compose
 To start Postgres, Redis, and the backend together, use:
@@ -97,15 +94,20 @@ python3 scripts/new_project.py \
 ```
 The script scaffolds folders, metadata, and starter briefs aligned with the UI fields and automation pipelines.
 
-## Storage architecture
-The `storageManager` service automatically promotes projects from `localStorage` to IndexedDB, handles migrations, and reports usage so authors can diagnose quota issues from the UI. Tests cover IndexedDB fallbacks, migrations, and quota reporting to ensure reliability across browsers.
+## Storage & sync architecture
+The client no longer persists projects in the browser. Instead, React Query orchestrates authenticated fetches to the Express API, performs optimistic updates, and receives live change notifications via Server-Sent Events. When an authenticated user logs in for the first time, any legacy `localStorage`/IndexedDB projects are exported to the active workspace and cleared locally, ensuring a seamless upgrade path.
 
 ## Testing
-Run the Node test suites with:
+Front-end tests (React Query hooks, auth flows, legacy migration) use Vitest and Testing Library:
 ```bash
 npm run test
 ```
-The tests focus on the hybrid storage layer and run via Node's built-in test runner with a custom TypeScript loader.
+
+Backend unit tests (token service, middleware, event bus) live in `server/test`:
+```bash
+cd server
+npm run test
+```
 
 ## Environment variables summary
 | Key | Purpose |
@@ -113,9 +115,11 @@ The tests focus on the hybrid storage layer and run via Node's built-in test run
 | `OPENAI_API_KEY` | Authorises AI analysis requests via the OpenAI SDK. |
 | `DATABASE_URL` | PostgreSQL connection string for Prisma models. |
 | `REDIS_URL` | Redis endpoint for Bull background jobs. |
-| `DEV_USER_ID` | Default user injected into requests during local development. |
+| `JWT_ACCESS_SECRET` | HMAC secret used to sign short-lived access tokens. |
+| `JWT_ACCESS_TTL` | Access-token lifetime (defaults to 15 minutes). |
+| `JWT_REFRESH_TTL_SECONDS` | Refresh-token lifetime in seconds (defaults to 14 days). |
+| `CORS_ORIGIN` | Comma-separated list of origins allowed to call the API with credentials. |
 | `PORT` | Express server port (defaults to `3001`). |
 | `VITE_API_BASE_URL` | Optional front-end override for the API base URL. |
-| `VITE_ANALYSIS_USER_ID` | Front-end default identifier associated with analysis requests. |
 
 With these values configured, the UI, queue workers, and AI analysis endpoints run cohesively for both solo creators and team deployments.

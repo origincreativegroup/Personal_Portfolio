@@ -7,7 +7,7 @@ const fileProcessor = new FileProcessor();
 const aiAnalysisService = new AIAnalysisService();
 
 analysisQueue.process('analyze-file', async (job) => {
-  const { fileId } = job.data as { fileId: string };
+  const { fileId } = job.data as { fileId: string; workspaceId: string; triggeredById: string };
 
   job.progress(0);
   await fileProcessor.processFile(fileId);
@@ -17,7 +17,7 @@ analysisQueue.process('analyze-file', async (job) => {
 });
 
 analysisQueue.process('analyze-project', async (job) => {
-  const { projectId } = job.data as { projectId: string };
+  const { projectId } = job.data as { projectId: string; workspaceId: string; triggeredById: string };
 
   job.progress(0);
   const result = await aiAnalysisService.analyzeProject(projectId);

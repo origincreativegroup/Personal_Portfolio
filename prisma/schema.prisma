@@ -9,41 +9,141 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  PENDING
+  REVOKED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum ProjectVisibility {
+  PRIVATE
+  WORKSPACE
+  PUBLIC
+}
+
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String?
-  avatar      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  projects    Project[]
-  
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String?
+  avatar       String?
+  passwordHash String
+  lastLoginAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  memberships       WorkspaceMember[]
+  ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
+  ownedProjects     Project[]         @relation("ProjectOwner")
+  revisions         ProjectRevision[]
+  invitesCreated    WorkspaceInvite[] @relation("InviteCreator")
+  invitesAccepted   WorkspaceInvite[] @relation("InviteAcceptedBy")
+  refreshTokens     RefreshToken[]
+  triggeredAnalyses ProjectAnalysis[] @relation("AnalysisTriggeredBy")
+  uploadedFiles     ProjectFile[]     @relation("FileUploadedBy")
+
   @@map("users")
 }
 
+model Workspace {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String?           @unique
+  createdById String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  createdBy   User              @relation("WorkspaceOwner", fields: [createdById], references: [id], onDelete: Cascade)
+  memberships WorkspaceMember[]
+  projects    Project[]
+  invites     WorkspaceInvite[]
+  revisions   ProjectRevision[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String           @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole    @default(CONTRIBUTOR)
+  status      MembershipStatus @default(ACTIVE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model WorkspaceInvite {
+  id           String         @id @default(cuid())
+  workspaceId  String
+  email        String
+  role         WorkspaceRole  @default(CONTRIBUTOR)
+  token        String         @unique
+  status       InviteStatus   @default(PENDING)
+  expiresAt    DateTime
+  createdById  String
+  acceptedById String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("InviteCreator", fields: [createdById], references: [id])
+  acceptedBy  User?           @relation("InviteAcceptedBy", fields: [acceptedById], references: [id])
+
+  @@map("workspace_invites")
+}
+
 model Project {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  category     String?
-  template     String?
-  color        String   @default("#5a3cf4")
-  visibility   String   @default("private")
-  featured     Boolean  @default(false)
-  userId       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files        ProjectFile[]
-  analysis     ProjectAnalysis?
-  
+  id                String             @id @default(cuid())
+  workspaceId       String
+  ownerId           String
+  name              String
+  description       String?
+  category          String?
+  template          String?
+  color             String            @default("#5a3cf4")
+  visibility        ProjectVisibility @default(PRIVATE)
+  featured          Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastSyncedAt      DateTime?
+  currentRevisionId String?
+  version           Int               @default(1)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner     User      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  files     ProjectFile[]
+  analysis  ProjectAnalysis?
+  revisions ProjectRevision[]
+
+  @@index([workspaceId])
   @@map("projects")
 }
 
 model ProjectFile {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
+  workspaceId  String
+  projectId    String
+  uploadedById String?
   name         String
   filename     String
   originalName String
@@ -53,76 +153,103 @@ model ProjectFile {
   thumbnailUrl String?
   description  String?
   tags         String[]
-  featured     Boolean  @default(false)
-  order        Int      @default(0)
-  projectId    String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  analysis     FileAnalysis?
-  
+  featured     Boolean      @default(false)
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  workspace  Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User?       @relation("FileUploadedBy", fields: [uploadedById], references: [id])
+  analysis   FileAnalysis?
+
   @@map("project_files")
 }
 
 model ProjectAnalysis {
   id               String   @id @default(cuid())
   projectId        String   @unique
-  status           String   @default("pending") // pending, analyzing, completed, failed
+  workspaceId      String
+  triggeredById    String?
+  status           String   @default("pending")
   confidence       Float?
   processingTime   Float?
   filesAnalyzed    Int      @default(0)
   insightsFound    Int      @default(0)
-  
-  // Problem Analysis
   primaryProblem   String?
   problemConfidence Float?
   problemEvidence  Json?
   problemAlternatives Json?
-  
-  // Solution Analysis  
   primarySolution  String?
   solutionConfidence Float?
   solutionElements Json?
   designPatterns   String[]
-  
-  // Impact Analysis
   primaryImpact    String?
   impactConfidence Float?
   metrics          Json?
   businessValue    String?
-  
-  // Narrative
-  story           String?
-  challenges      String[]
-  process         String[]
-  
-  // Suggestions
+  story            String?
+  challenges       String[]
+  process          String[]
   suggestedTitle   String?
   suggestedCategory String?
   suggestedTags    String[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  triggeredBy User?    @relation("AnalysisTriggeredBy", fields: [triggeredById], references: [id])
+
   @@map("project_analyses")
 }
 
-model FileAnalysis {
+model ProjectRevision {
   id           String   @id @default(cuid())
-  fileId       String   @unique
-  status       String   @default("pending")
-  contentType  String?
-  insights     Json?
-  extractedText String?
-  metadata     Json?
-  processingTime Float?
+  projectId    String
+  workspaceId  String
+  createdById  String
+  number       Int
+  summary      String?
+  snapshot     Json
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  
+
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@unique([projectId, number])
+  @@map("project_revisions")
+}
+
+model FileAnalysis {
+  id            String   @id @default(cuid())
+  fileId        String   @unique
+  status        String   @default("pending")
+  contentType   String?
+  insights      Json?
+  extractedText String?
+  metadata      Json?
+  processingTime Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  file ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
   @@map("file_analyses")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }

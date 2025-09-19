@@ -1,12 +1,13 @@
 import OpenAI from 'openai';
-import { PrismaClient } from '@prisma/client';
 import { AnalysisResult, AnalysisInsight } from '../types/analysis';
+import prisma from '../lib/prisma';
 
 type ProjectWithFiles = {
   id: string;
   name: string;
   description: string | null;
   category: string | null;
+  workspaceId: string;
   files: Array<{
     id: string;
     name: string;
@@ -22,31 +23,18 @@ type ProjectWithFiles = {
 
 export class AIAnalysisService {
   private openai: OpenAI;
-  private prisma: PrismaClient;
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-    this.prisma = new PrismaClient();
   }
 
   async analyzeProject(projectId: string): Promise<AnalysisResult> {
     const startTime = Date.now();
 
     try {
-      await this.prisma.projectAnalysis.upsert({
-        where: { projectId },
-        create: {
-          projectId,
-          status: 'analyzing'
-        },
-        update: {
-          status: 'analyzing'
-        }
-      });
-
-      const project = await this.prisma.project.findUnique({
+      const project = await prisma.project.findUnique({
         where: { id: projectId },
         include: {
           files: {
@@ -61,6 +49,19 @@ export class AIAnalysisService {
         throw new Error(`Project ${projectId} not found`);
       }
 
+      await prisma.projectAnalysis.upsert({
+        where: { projectId },
+        create: {
+          projectId,
+          workspaceId: project.workspaceId,
+          status: 'analyzing'
+        },
+        update: {
+          status: 'analyzing',
+          workspaceId: project.workspaceId,
+        }
+      });
+
       const compiledData = this.compileAnalysisData(project);
       const analysis = await this.generateAIAnalysis(compiledData);
 
@@ -68,7 +69,7 @@ export class AIAnalysisService {
       const filesAnalyzed = project.files.length;
       const insightsFound = compiledData.allInsights.length;
 
-      await this.prisma.projectAnalysis.update({
+      await prisma.projectAnalysis.update({
         where: { projectId },
         data: {
           status: 'completed',
@@ -114,7 +115,7 @@ export class AIAnalysisService {
     } catch (error) {
       console.error(`Error analyzing project ${projectId}:`, error);
       
-      await this.prisma.projectAnalysis.update({
+      await prisma.projectAnalysis.update({
         where: { projectId },
         data: {
           status: 'failed',

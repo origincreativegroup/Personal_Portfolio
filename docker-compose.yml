@@ -25,6 +25,11 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/portfolioforge
       - REDIS_URL=redis://redis:6379
+      - JWT_ACCESS_SECRET=change-me-in-prod
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL_SECONDS=1209600
+      - OPENAI_API_KEY=
+      - CORS_ORIGIN=http://localhost:5173
     depends_on:
       - postgres
       - redis

@@ -1,39 +1,46 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import multer from 'multer';
-import { PrismaClient } from '@prisma/client';
 import analysisRoutes from './routes/analysis';
+import authRoutes from './routes/auth';
+import workspaceRoutes from './routes/workspaces';
+import projectRoutes from './routes/projects';
+import syncRoutes from './routes/sync';
+import { authenticate, requireAuth } from './middleware/auth';
 
 const app = express();
-const prisma = new PrismaClient();
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+  : ['http://localhost:5173'];
 
-app.use((req, _res, next) => {
-  const headerUserId = req.header('x-user-id');
-  const devUserId = process.env.DEV_USER_ID ?? (process.env.NODE_ENV !== 'production' ? 'demo-user' : undefined);
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
 
-  if (headerUserId || devUserId) {
-    req.user = {
-      id: headerUserId ?? devUserId!,
-    };
-  }
+app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
 
-  next();
-});
+// Attach user context if a valid access token is provided
+app.use(authenticate);
 
 const storage = multer.memoryStorage();
-const upload = multer({
+export const upload = multer({
   storage,
   limits: {
-    fileSize: 50 * 1024 * 1024
-  }
+    fileSize: 50 * 1024 * 1024,
+  },
 });
 
-app.use('/api/analysis', analysisRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/workspaces', requireAuth, workspaceRoutes);
+app.use('/api/workspaces', requireAuth, projectRoutes);
+app.use('/api/analysis', requireAuth, analysisRoutes);
+app.use('/api/sync', requireAuth, syncRoutes);
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 

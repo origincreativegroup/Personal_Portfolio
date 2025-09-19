@@ -23,6 +23,7 @@ import {
   Video,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 import './PortfolioForgeAIAnalysis.css'
 import PortfolioHierarchy from '../components/PortfolioHierarchy'
@@ -49,7 +50,6 @@ const resolveApiBaseUrl = (): string => {
 }
 
 const API_BASE_URL = resolveApiBaseUrl()
-const DEFAULT_USER_ID = import.meta.env.VITE_ANALYSIS_USER_ID ?? 'demo-user'
 
 type AnalysisStep = 'idle' | 'analyzing' | 'complete' | 'failed'
 
@@ -422,10 +422,11 @@ const extractErrorMessage = async (response: Response, fallback: string): Promis
   return fallback
 }
 
-const createBaseHeaders = (): HeadersInit => {
+const createBaseHeaders = (token?: string): HeadersInit => {
   const headers: HeadersInit = {}
-  if (DEFAULT_USER_ID) {
-    headers['x-user-id'] = DEFAULT_USER_ID
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
   }
 
   // Add OpenAI credentials if available
@@ -516,6 +517,7 @@ const SuggestionCard = ({ title, content, onApply, onEdit, isApplied, disabled }
   </div>
 )
 export default function PortfolioForgeAIAnalysis() {
+  const { accessToken } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('idle')
@@ -535,7 +537,7 @@ export default function PortfolioForgeAIAnalysis() {
   const [applyStatus, setApplyStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [applyMessage, setApplyMessage] = useState<string | null>(null)
 
-  const baseHeaders = useMemo(createBaseHeaders, [])
+  const baseHeaders = useMemo(() => createBaseHeaders(accessToken ?? undefined), [accessToken])
   const jsonHeaders = useMemo(() => createJsonHeaders(baseHeaders), [baseHeaders])
 
   const handleHierarchyProjectSelect = useCallback((projectSlug: string) => {
