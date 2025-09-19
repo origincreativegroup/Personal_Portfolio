@@ -2,7 +2,6 @@ const STORAGE_KEY = 'openai.credentials'
 
 export type OpenAICredentialsInput = {
   apiKey: string
-  apiSecret: string
 }
 
 export type StoredOpenAICredentials = OpenAICredentialsInput & {
@@ -39,10 +38,9 @@ const parseStoredValue = (raw: string | null): StoredOpenAICredentials | null =>
 
   try {
     const parsed = JSON.parse(raw) as Partial<StoredOpenAICredentials>
-    if (typeof parsed.apiKey === 'string' && typeof parsed.apiSecret === 'string') {
+    if (typeof parsed.apiKey === 'string') {
       return {
         apiKey: parsed.apiKey,
-        apiSecret: parsed.apiSecret,
         savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
       }
     }
@@ -73,7 +71,6 @@ export const saveOpenAICredentials = (
 ): StoredOpenAICredentials => {
   const normalized: StoredOpenAICredentials = {
     apiKey: credentials.apiKey,
-    apiSecret: credentials.apiSecret,
     savedAt: new Date().toISOString(),
   }
 

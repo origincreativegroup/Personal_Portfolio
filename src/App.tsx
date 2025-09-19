@@ -1,35 +1,36 @@
 // src/App.tsx
 import React from 'react'
-import { Link, Route, Routes, Navigate } from 'react-router-dom'
-import IntakePage from './pages/IntakePage'
-import EditorPage from './pages/EditorPage'
+import { Route, Routes, Navigate } from 'react-router-dom'
+import DashboardPage from './pages/DashboardPage'
+import NewIntakePage from './pages/NewIntakePage'
+import NewEditorPage from './pages/NewEditorPage'
+import SettingsPage from './pages/SettingsPage'
 import PortfolioForgeAIAnalysis from './pages/PortfolioForgeAIAnalysis'
 import OpenAISettingsPage from './pages/OpenAISettingsPage'
+// Legacy pages for backward compatibility
+import IntakePage from './pages/IntakePage'
+import EditorPage from './pages/EditorPage'
 
 function App() {
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="app-header__inner">
-          <div>
-            <p className="app-header__eyebrow">Workflow</p>
-            <h1 className="app-header__title">Portfolio Intake</h1>
-          </div>
-          <nav className="app-nav">
-            <Link to="/intake" className="app-nav__link">New project</Link>
-            <Link to={{ pathname: '/intake', hash: '#saved-projects' }} className="app-nav__link">Saved projects</Link>
-            <Link to="/analysis" className="app-nav__link">AI analysis</Link>
-            <Link to="/settings/openai" className="app-nav__link">API keys</Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="app-main">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <main>
         <Routes>
-          <Route path="/" element={<Navigate to="/intake" replace />} />
-          <Route path="/intake" element={<IntakePage />} />
-          <Route path="/editor/:slug" element={<EditorPage />} />
+          {/* Default route redirects to dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* New UI routes */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/create" element={<NewIntakePage />} />
+          <Route path="/editor/:projectId" element={<NewEditorPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* AI Analysis route */}
           <Route path="/analysis" element={<PortfolioForgeAIAnalysis />} />
+
+          {/* Legacy routes for backward compatibility */}
+          <Route path="/intake" element={<IntakePage />} />
+          <Route path="/editor-legacy/:slug" element={<EditorPage />} />
           <Route path="/settings/openai" element={<OpenAISettingsPage />} />
         </Routes>
       </main>

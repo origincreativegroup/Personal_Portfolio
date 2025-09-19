@@ -26,6 +26,7 @@ import type { LucideIcon } from 'lucide-react'
 
 import './PortfolioForgeAIAnalysis.css'
 import PortfolioHierarchy from '../components/PortfolioHierarchy'
+import { loadOpenAICredentials } from '../utils/openAICredentials'
 
 const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '')
 
@@ -392,6 +393,16 @@ const buildProjectDescription = (analysis: AIAnalysis, edits: Partial<Record<Sug
 }
 
 const extractErrorMessage = async (response: Response, fallback: string): Promise<string> => {
+  // Check for connection errors first
+  if (response.status === 0 || !response.ok) {
+    if (response.status === 0) {
+      return 'Cannot connect to the AI analysis backend. Make sure the backend server is running on port 3001.'
+    }
+    if (response.status >= 500) {
+      return 'AI analysis backend server error. The backend may need to be restarted or configured properly.'
+    }
+  }
+
   try {
     const data = await response.clone().json() as { error?: unknown }
     if (data && typeof data.error === 'string') {
@@ -416,6 +427,13 @@ const createBaseHeaders = (): HeadersInit => {
   if (DEFAULT_USER_ID) {
     headers['x-user-id'] = DEFAULT_USER_ID
   }
+
+  // Add OpenAI credentials if available
+  const credentials = loadOpenAICredentials()
+  if (credentials?.apiKey) {
+    headers['x-openai-api-key'] = credentials.apiKey
+  }
+
   return headers
 }
 
@@ -653,6 +671,13 @@ export default function PortfolioForgeAIAnalysis() {
       return
     }
 
+    // Check for OpenAI credentials
+    const credentials = loadOpenAICredentials()
+    if (!credentials?.apiKey) {
+      setAnalysisError('OpenAI API key is required. Please configure your credentials in the API keys page.')
+      return
+    }
+
     setAnalysisError(null)
     setApplyStatus('idle')
     setApplyMessage(null)
@@ -699,7 +724,14 @@ export default function PortfolioForgeAIAnalysis() {
         // Already handled within initialiseFromStatus
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to start analysis.'
+      let message = 'Unable to start analysis.'
+      if (error instanceof Error) {
+        if (error.message.includes('fetch') || error.message.includes('NetworkError') || error.name === 'TypeError') {
+          message = 'Cannot connect to the AI analysis backend. Make sure the backend server is running on port 3001.'
+        } else {
+          message = error.message
+        }
+      }
       setAnalysisError(message)
       setAnalysisStep('failed')
     } finally {
@@ -977,7 +1009,26 @@ export default function PortfolioForgeAIAnalysis() {
               </div>
             </form>
             {analysisError ? (
-              <p className="analysis-feedback analysis-feedback--error">{analysisError}</p>
+              <div className="analysis-feedback analysis-feedback--error">
+                <p>{analysisError}</p>
+                {analysisError.includes('OpenAI API key') && (
+                  <p>
+                    <a href="/settings/openai" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                      Configure OpenAI credentials →
+                    </a>
+                  </p>
+                )}
+                {analysisError.includes('backend') && (
+                  <div style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
+                    <p><strong>To fix this:</strong></p>
+                    <ol style={{ margin: '0.5rem 0', paddingLeft: '1.2rem' }}>
+                      <li>Open a terminal in the server directory</li>
+                      <li>Run: <code style={{ background: '#f3f4f6', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>npm start</code></li>
+                      <li>Make sure the server starts on port 3001</li>
+                    </ol>
+                  </div>
+                )}
+              </div>
             ) : null}
             {applyMessage ? (
               <p

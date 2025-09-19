@@ -9,14 +9,12 @@ import './OpenAISettingsPage.css'
 
 type FormState = {
   apiKey: string
-  apiSecret: string
 }
 
 type FormStatus = 'idle' | 'saved' | 'cleared' | 'error'
 
 const initialState: FormState = {
   apiKey: '',
-  apiSecret: '',
 }
 
 const formatTimestamp = (timestamp: string | null): string | null => {
@@ -55,7 +53,6 @@ export default function OpenAISettingsPage() {
   const applyStoredCredentials = (credentials: StoredOpenAICredentials) => {
     setFormState({
       apiKey: credentials.apiKey,
-      apiSecret: credentials.apiSecret,
     })
     setLastSaved(credentials.savedAt)
     setHasLocalChanges(false)
@@ -79,11 +76,16 @@ export default function OpenAISettingsPage() {
 
     const normalized = {
       apiKey: sanitize(formState.apiKey),
-      apiSecret: sanitize(formState.apiSecret),
     }
 
-    if (!normalized.apiKey || !normalized.apiSecret) {
-      setErrorMessage('Please provide both the API key and the API secret before saving.')
+    if (!normalized.apiKey) {
+      setErrorMessage('Please provide your OpenAI API key before saving.')
+      setStatus('error')
+      return
+    }
+
+    if (!normalized.apiKey.startsWith('sk-')) {
+      setErrorMessage('OpenAI API keys start with "sk-". Please check your key and try again.')
       setStatus('error')
       return
     }
@@ -118,8 +120,8 @@ export default function OpenAISettingsPage() {
             <p className="openai-settings__eyebrow">Local configuration</p>
             <h1>OpenAI credentials</h1>
             <p className="openai-settings__description">
-              Store your OpenAI API key and secret locally so this browser can authenticate requests to the
-              Portfolio Forge tools. These values never leave your device and are only saved to your local storage.
+              Store your OpenAI API key locally so this browser can authenticate requests to the Portfolio Forge AI tools.
+              Your API key never leaves your device and is only saved to your browser's local storage.
             </p>
           </div>
           <div className="openai-settings__meta">
@@ -133,29 +135,19 @@ export default function OpenAISettingsPage() {
 
         <form className="openai-settings__form" onSubmit={handleSubmit}>
           <div className="openai-settings__field">
-            <label htmlFor="openai-api-key">API key</label>
+            <label htmlFor="openai-api-key">OpenAI API Key</label>
             <input
               id="openai-api-key"
               name="openai-api-key"
               type={showSecrets ? 'text' : 'password'}
               value={formState.apiKey}
               onChange={handleInputChange('apiKey')}
-              placeholder="sk-..."
+              placeholder="sk-proj-..."
               autoComplete="off"
             />
-          </div>
-
-          <div className="openai-settings__field">
-            <label htmlFor="openai-api-secret">API secret</label>
-            <input
-              id="openai-api-secret"
-              name="openai-api-secret"
-              type={showSecrets ? 'text' : 'password'}
-              value={formState.apiSecret}
-              onChange={handleInputChange('apiSecret')}
-              placeholder="Enter your secret"
-              autoComplete="off"
-            />
+            <p className="openai-settings__field-help">
+              Your API key should start with "sk-" and look like: sk-proj-1234567890abcdef...
+            </p>
           </div>
 
           <div className="openai-settings__visibility-toggle">
@@ -165,7 +157,7 @@ export default function OpenAISettingsPage() {
                 checked={showSecrets}
                 onChange={event => setShowSecrets(event.target.checked)}
               />
-              Show values while typing
+              Show API key while typing
             </label>
           </div>
 
@@ -197,7 +189,7 @@ export default function OpenAISettingsPage() {
               type="button"
               className="button button--ghost"
               onClick={handleClear}
-              disabled={!formState.apiKey && !formState.apiSecret}
+              disabled={!formState.apiKey}
             >
               Clear saved values
             </button>
@@ -206,16 +198,42 @@ export default function OpenAISettingsPage() {
       </section>
 
       <section className="openai-settings__card openai-settings__card--info">
-        <h2>Need help locating your keys?</h2>
-        <ol>
-          <li>Visit the <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noreferrer">OpenAI dashboard</a>.</li>
-          <li>Create a new secret key and copy both the key and secret to this page.</li>
-          <li>Keep the tab open until you confirm the credentials are saved locally.</li>
-        </ol>
-        <p className="openai-settings__disclaimer">
-          Tip: because these values only live in your browser storage, you will need to add them again if you switch
-          devices or clear your browsing data.
-        </p>
+        <h2>How to get your OpenAI API key</h2>
+        <div className="openai-instructions">
+          <div className="openai-instructions__step">
+            <div className="openai-instructions__step-number">1</div>
+            <div className="openai-instructions__step-content">
+              <h3>Go to OpenAI Platform</h3>
+              <p>Visit <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">platform.openai.com/api-keys</a></p>
+            </div>
+          </div>
+
+          <div className="openai-instructions__step">
+            <div className="openai-instructions__step-number">2</div>
+            <div className="openai-instructions__step-content">
+              <h3>Create a new secret key</h3>
+              <p>Click "Create new secret key" and give it a name (like "Portfolio App")</p>
+            </div>
+          </div>
+
+          <div className="openai-instructions__step">
+            <div className="openai-instructions__step-number">3</div>
+            <div className="openai-instructions__step-content">
+              <h3>Copy your API key</h3>
+              <p>Copy the key that starts with "sk-" and paste it above. Keep the OpenAI tab open until you save it here.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="openai-settings__tips">
+          <h3>💡 Important tips</h3>
+          <ul>
+            <li><strong>Keep it secure:</strong> Never share your API key with others</li>
+            <li><strong>Local storage:</strong> Your key stays in this browser only</li>
+            <li><strong>Need to re-enter:</strong> You'll need to add it again if you clear browser data or switch devices</li>
+            <li><strong>Billing:</strong> Check your usage at <a href="https://platform.openai.com/usage" target="_blank" rel="noreferrer">platform.openai.com/usage</a></li>
+          </ul>
+        </div>
       </section>
     </div>
   )
