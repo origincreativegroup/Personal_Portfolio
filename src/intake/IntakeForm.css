@@ -179,6 +179,16 @@
   display: none;
 }
 
+.upload-flow__error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-weight: 500;
+}
+
 .upload-flow__option-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
