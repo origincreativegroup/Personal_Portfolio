@@ -65,6 +65,7 @@ export default function IntakeForm({ onComplete }: Props) {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [selectedProject, setSelectedProject] = useState('')
   const [formData, setFormData] = useState(initialFormState)
+  const [fileError, setFileError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -88,18 +89,20 @@ export default function IntakeForm({ onComplete }: Props) {
         preview: file.type.startsWith('image/') && result ? result : null,
         dataUrl: result,
       })
+      setFileError(null)
+      setCurrentStep(1)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
     reader.onerror = () => {
-      setUploadedFile({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        preview: null,
-        dataUrl: null,
-      })
+      setUploadedFile(null)
+      setFileError('We couldn’t read that file. Try choosing a different file or format.')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
     reader.readAsDataURL(file)
-    setCurrentStep(1)
   }
 
   const handleInputChange = (field: keyof typeof initialFormState, value: string) => {
@@ -123,6 +126,10 @@ export default function IntakeForm({ onComplete }: Props) {
     setUploadedFile(null)
     setSelectedProject('')
     setFormData(initialFormState)
+    setFileError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -300,17 +307,22 @@ export default function IntakeForm({ onComplete }: Props) {
             >
               <Upload size={42} className="upload-flow__dropzone-icon" />
               <h3>{dragOver ? 'Drop your file here' : 'Drag & drop or click to upload'}</h3>
-              <p>Supports JPG, PNG, PDF, MP4 and more.</p>
-              <small>Maximum file size: 50MB</small>
+              <p>Supports PDF, MP4, MOV, PNG, JPG/JGP, EPS/ESP and more. Files stay local to this browser.</p>
             </div>
 
             <input
               ref={fileInputRef}
               type="file"
               className="upload-flow__file-input"
-              accept="image/*,video/*,.pdf,.doc,.docx"
+              accept="image/*,video/*,.pdf,.mp4,.mov,.png,.jpg,.jpeg,.jgp,.eps,.esp,.doc,.docx"
               onChange={event => handleFileSelect(event.target.files?.[0])}
             />
+
+            {fileError && (
+              <div className="upload-flow__error" role="alert">
+                {fileError}
+              </div>
+            )}
 
             <div className="upload-flow__option-grid">
               <button type="button" className="upload-flow__option-btn" onClick={() => fileInputRef.current?.click()}>
