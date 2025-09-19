@@ -5,6 +5,7 @@ import IntakePage from './pages/IntakePage'
 import EditorPage from './pages/EditorPage'
 import PortfolioForgeAIAnalysis from './pages/PortfolioForgeAIAnalysis'
 import OpenAISettingsPage from './pages/OpenAISettingsPage'
+import AwesomeGoPage from './pages/AwesomeGoPage'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Link to="/intake" className="app-nav__link">New project</Link>
             <Link to={{ pathname: '/intake', hash: '#saved-projects' }} className="app-nav__link">Saved projects</Link>
             <Link to="/analysis" className="app-nav__link">AI analysis</Link>
+            <Link to="/awesome-go" className="app-nav__link">Go libraries</Link>
             <Link to="/settings/openai" className="app-nav__link">API keys</Link>
           </nav>
         </div>
@@ -30,6 +32,7 @@ function App() {
           <Route path="/intake" element={<IntakePage />} />
           <Route path="/editor/:slug" element={<EditorPage />} />
           <Route path="/analysis" element={<PortfolioForgeAIAnalysis />} />
+          <Route path="/awesome-go" element={<AwesomeGoPage />} />
           <Route path="/settings/openai" element={<OpenAISettingsPage />} />
         </Routes>
       </main>
