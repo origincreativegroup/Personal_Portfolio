@@ -328,6 +328,7 @@ export default function IntakeForm({ onComplete }: Props) {
               role="button"
               tabIndex={0}
               onKeyDown={handleDropzoneKeyDown}
+              aria-label="Upload file"
               aria-describedby={`${dropzoneDescriptionId} ${dropzoneHintId} ${dropzoneHelpId}`}
             >
               <Upload size={42} className="upload-flow__dropzone-icon" />
