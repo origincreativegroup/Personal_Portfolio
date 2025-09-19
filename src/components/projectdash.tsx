@@ -342,12 +342,22 @@ export default function ProjectAssetEditor({ assets, onAssetUpdate, onAssetRemov
             const addedTimestamp = parseTimestamp(asset.addedAt)
             const addedLabel = addedTimestamp ? new Date(addedTimestamp).toLocaleDateString() : '—'
 
+            const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setSelectedAssetId(asset.id)
+              }
+            }
+
             return (
-              <button
+              <div
                 key={asset.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={`asset-editor__item ${isSelected ? 'asset-editor__item--selected' : ''}`}
                 onClick={() => setSelectedAssetId(asset.id)}
+                onKeyDown={handleKeyDown}
+                aria-pressed={isSelected}
               >
                 <div className="asset-editor__thumb">
                   {category === 'image' ? (
@@ -392,7 +402,7 @@ export default function ProjectAssetEditor({ assets, onAssetUpdate, onAssetRemov
                   <span>{sizeLabel}</span>
                   <small>Added {addedLabel}</small>
                 </div>
-              </button>
+              </div>
             )
           })}
 
