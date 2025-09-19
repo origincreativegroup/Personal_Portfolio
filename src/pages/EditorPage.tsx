@@ -4,6 +4,7 @@ import ProjectFileExplorer from '../components/ProjectFileExplorer'
 import ProjectAssetEditor from '../components/projectdash'
 import { loadProject, saveProject, deleteProject } from '../utils/storageManager'
 import type { ProjectAsset, ProjectMeta } from '../intake/schema'
+import { generateVideoThumbnail } from '../utils/videoThumbnails'
 
 type FormState = {
   title: string
@@ -190,6 +191,16 @@ export default function EditorPage() {
 
       try {
         const dataUrl = await readFileAsDataUrl(file)
+        let thumbnailUrl: string | null = null
+
+        if (file.type.startsWith('video/')) {
+          try {
+            thumbnailUrl = await generateVideoThumbnail(file)
+          } catch (error) {
+            console.warn('Unable to generate thumbnail for video asset', error)
+          }
+        }
+
         additions.push({
           id: createAssetId(),
           name: file.name,
@@ -197,10 +208,11 @@ export default function EditorPage() {
           size: file.size,
           dataUrl,
           addedAt: new Date().toISOString(),
+          thumbnailUrl: thumbnailUrl ?? null,
         })
       } catch (error) {
         console.error('Unable to read uploaded file', error)
-        skipped.push(`${file.name} (failed to read)`) 
+        skipped.push(`${file.name} (failed to read)`)
       }
     }
 

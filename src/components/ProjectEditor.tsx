@@ -13,7 +13,8 @@ import {
   Settings,
   Monitor,
   Smartphone,
-  Tablet
+  Tablet,
+  Video
 } from 'lucide-react'
 import type { ProjectMeta, ProjectAsset } from '../intake/schema'
 
@@ -279,6 +280,7 @@ export default function ProjectEditor({ project, onUpdateProject }: ProjectEdito
                 <BlockButton icon={Type} label="Text" onClick={() => addBlock('text')} />
                 <BlockButton icon={Image} label="Image" onClick={() => addBlock('image')} />
                 <BlockButton icon={Grid} label="Gallery" onClick={() => addBlock('gallery')} />
+                <BlockButton icon={Video} label="Video" onClick={() => addBlock('video')} />
                 <BlockButton icon={Link2} label="Links" onClick={() => addBlock('link')} />
                 <BlockButton icon={Settings} label="Metrics" onClick={() => addBlock('metrics')} />
               </div>
@@ -432,7 +434,32 @@ function BlockContent({ block, isPreview }: { block: LayoutBlock, isPreview: boo
           </div>
         </div>
       )
-    
+
+    case 'video':
+      return (
+        <div className="block-video">
+          {block.content.videoUrl ? (
+            <video
+              controls={block.content.controls ?? true}
+              autoPlay={block.content.autoplay ?? false}
+              loop={block.content.loop ?? false}
+              muted={block.content.muted ?? false}
+              playsInline
+              poster={block.content.posterUrl ?? undefined}
+            >
+              <source src={block.content.videoUrl} type={block.content.mimeType ?? undefined} />
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="block-video__placeholder">
+              <Video size={48} />
+              <p>Select a video</p>
+            </div>
+          )}
+          {block.content.caption && <p className="block-video__caption">{block.content.caption}</p>}
+        </div>
+      )
+
     case 'metrics':
       return (
         <div className="block-metrics">
@@ -523,17 +550,17 @@ function BlockSettings({
       {block.type === 'image' && (
         <div className="setting-group">
           <label>Select Image</label>
-          <select 
-            value={block.content.assetId || ''} 
+          <select
+            value={block.content.assetId || ''}
             onChange={(e) => {
               const asset = assets.find(a => a.id === e.target.value)
-              onUpdate({ 
-                content: { 
-                  ...block.content, 
+              onUpdate({
+                content: {
+                  ...block.content,
                   assetId: e.target.value,
                   imageUrl: asset?.dataUrl,
                   alt: asset?.description || asset?.name
-                } 
+                }
               })
             }}
           >
@@ -543,6 +570,78 @@ function BlockSettings({
             ))}
           </select>
         </div>
+      )}
+
+      {block.type === 'video' && (
+        <>
+          <div className="setting-group">
+            <label>Select Video</label>
+            <select
+              value={block.content.assetId || ''}
+              onChange={(event) => {
+                const asset = assets.find(a => a.id === event.target.value)
+                onUpdate({
+                  content: {
+                    ...block.content,
+                    assetId: event.target.value || null,
+                    videoUrl: asset?.dataUrl ?? null,
+                    posterUrl: asset?.thumbnailUrl ?? null,
+                    mimeType: asset?.mimeType ?? null,
+                  }
+                })
+              }}
+            >
+              <option value="">Select a video...</option>
+              {assets.filter(a => a.mimeType.startsWith('video/')).map(asset => (
+                <option key={asset.id} value={asset.id}>{asset.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="setting-group setting-group--toggles">
+            <label className="setting-group__checkbox">
+              <input
+                type="checkbox"
+                checked={block.content.controls ?? true}
+                onChange={(event) => onUpdate({ content: { ...block.content, controls: event.target.checked } })}
+              />
+              Show controls
+            </label>
+            <label className="setting-group__checkbox">
+              <input
+                type="checkbox"
+                checked={block.content.autoplay ?? false}
+                onChange={(event) => onUpdate({ content: { ...block.content, autoplay: event.target.checked } })}
+              />
+              Autoplay
+            </label>
+            <label className="setting-group__checkbox">
+              <input
+                type="checkbox"
+                checked={block.content.loop ?? false}
+                onChange={(event) => onUpdate({ content: { ...block.content, loop: event.target.checked } })}
+              />
+              Loop playback
+            </label>
+            <label className="setting-group__checkbox">
+              <input
+                type="checkbox"
+                checked={block.content.muted ?? false}
+                onChange={(event) => onUpdate({ content: { ...block.content, muted: event.target.checked } })}
+              />
+              Mute audio
+            </label>
+          </div>
+
+          <div className="setting-group">
+            <label>Caption</label>
+            <textarea
+              value={block.content.caption ?? ''}
+              onChange={(event) => onUpdate({ content: { ...block.content, caption: event.target.value } })}
+              placeholder="Describe the video context"
+            />
+          </div>
+        </>
       )}
     </div>
   )
@@ -558,6 +657,18 @@ function getDefaultContent(type: LayoutBlock['type']) {
       return { imageUrl: null, alt: '', caption: '' }
     case 'gallery':
       return { title: 'Gallery', images: [] }
+    case 'video':
+      return {
+        assetId: null,
+        videoUrl: null,
+        posterUrl: null,
+        caption: '',
+        controls: true,
+        autoplay: false,
+        loop: false,
+        muted: false,
+        mimeType: null,
+      }
     case 'metrics':
       return { title: 'Metrics', metrics: [] }
     case 'link':
@@ -597,6 +708,31 @@ function generateHTML(blocks: LayoutBlock[], project: ProjectMeta): string {
           </div>
         `
         break
+      case 'video': {
+        const attributes = [
+          block.content.controls === false ? '' : 'controls',
+          block.content.autoplay ? 'autoplay' : '',
+          block.content.loop ? 'loop' : '',
+          block.content.muted ? 'muted' : '',
+          block.content.posterUrl ? `poster="${block.content.posterUrl}"` : '',
+          'playsinline'
+        ].filter(Boolean).join(' ')
+        const sourceType = block.content.mimeType ? ` type="${block.content.mimeType}"` : ''
+        content = `
+          <div class="block-video">
+            ${block.content.videoUrl ? `
+              <video ${attributes}>
+                <source src="${block.content.videoUrl}"${sourceType} />
+                Your browser does not support the video tag.
+              </video>
+            ` : `
+              <div class="block-video__placeholder">Video placeholder</div>
+            `}
+            ${block.content.caption ? `<p class="block-video__caption">${block.content.caption}</p>` : ''}
+          </div>
+        `
+        break
+      }
       // Add other block types...
     }
     
@@ -621,6 +757,9 @@ function generateHTML(blocks: LayoutBlock[], project: ProjectMeta): string {
     .block-hero__image { width: 100%; height: 400px; object-fit: cover; }
     .block-hero__content { padding: 2rem; }
     .block-text__content p { margin-bottom: 1rem; }
+    .block-video { text-align: center; }
+    .block-video video { width: 100%; max-height: 420px; border-radius: 12px; background: #111827; }
+    .block-video__caption { margin-top: 0.75rem; font-size: 0.9rem; color: #4b5563; font-style: italic; }
     /* Add more styles as needed */
   </style>
 </head>

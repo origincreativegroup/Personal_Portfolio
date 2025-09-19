@@ -353,9 +353,18 @@ export default function ProjectAssetEditor({ assets, onAssetUpdate, onAssetRemov
                   {category === 'image' ? (
                     <img src={asset.dataUrl} alt={asset.name} />
                   ) : category === 'video' ? (
-                    <div className="asset-editor__thumb-icon">
-                      <Video />
-                    </div>
+                    asset.thumbnailUrl ? (
+                      <div className="asset-editor__thumb-video">
+                        <img src={asset.thumbnailUrl} alt={`${asset.name} thumbnail`} />
+                        <span className="asset-editor__thumb-video-indicator">
+                          <Video size={16} />
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="asset-editor__thumb-icon">
+                        <Video />
+                      </div>
+                    )
                   ) : category === 'audio' ? (
                     <div className="asset-editor__thumb-icon">
                       <Music />
@@ -416,7 +425,11 @@ export default function ProjectAssetEditor({ assets, onAssetUpdate, onAssetRemov
               {selectedCategory === 'image' ? (
                 <img src={selectedAsset.dataUrl} alt={selectedAsset.name} />
               ) : selectedCategory === 'video' ? (
-                <video controls src={selectedAsset.dataUrl} />
+                <video
+                  controls
+                  poster={selectedAsset.thumbnailUrl ?? undefined}
+                  src={selectedAsset.dataUrl}
+                />
               ) : selectedCategory === 'audio' ? (
                 <audio controls src={selectedAsset.dataUrl} />
               ) : (
