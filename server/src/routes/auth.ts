@@ -182,7 +182,6 @@ router.post('/login', async (req, res) => {
 
   const workspaceSummaries = formatMemberships(user.memberships);
   const resolvedActiveWorkspaceId = workspaceId
-    ?? user.memberships.find((membership) => membership.workspaceId === workspaceId)?.workspaceId
     ?? user.memberships[0]?.workspaceId;
 
   if (!resolvedActiveWorkspaceId) {
