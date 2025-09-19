@@ -335,6 +335,7 @@ export default function IntakeForm({ onComplete }: Props) {
               <label className="upload-flow__field">
                 <span>Project title *</span>
                 <input
+                  id="project-title"
                   type="text"
                   value={formData.title}
                   onChange={event => handleInputChange('title', event.target.value)}
@@ -347,6 +348,7 @@ export default function IntakeForm({ onComplete }: Props) {
               <label className="upload-flow__field">
                 <span>Short summary</span>
                 <textarea
+                  id="project-summary"
                   value={formData.summary}
                   onChange={event => handleInputChange('summary', event.target.value)}
                   placeholder="1-2 sentence overview of what you built and its impact"
@@ -543,23 +545,23 @@ export default function IntakeForm({ onComplete }: Props) {
               <div className="upload-flow__field-grid">
                 <label className="upload-flow__field">
                   <span>Collaborators/teams</span>
-                  <input
-                    type="text"
+                  <textarea
                     value={formData.collaborators}
                     onChange={event => handleInputChange('collaborators', event.target.value)}
-                    placeholder="Sarah Chen, Dev Team, Marketing"
-                    className="upload-flow__input"
+                    placeholder="Sarah Chen - UX Researcher&#10;Dev Team - Frontend Development&#10;Marketing - Campaign Strategy"
+                    className="upload-flow__textarea"
+                    rows={3}
                   />
                 </label>
 
                 <label className="upload-flow__field">
                   <span>Timeframe</span>
-                  <input
-                    type="text"
+                  <textarea
                     value={formData.timeframe}
                     onChange={event => handleInputChange('timeframe', event.target.value)}
-                    placeholder="3 months, Q1 2024, ongoing"
-                    className="upload-flow__input"
+                    placeholder="3 months (January - March 2024)&#10;Sprint-based development&#10;Launch in Q1 2024"
+                    className="upload-flow__textarea"
+                    rows={3}
                   />
                 </label>
               </div>
@@ -580,46 +582,46 @@ export default function IntakeForm({ onComplete }: Props) {
                 <div className="upload-flow__field-grid">
                   <label className="upload-flow__field">
                     <span>Sales/Revenue impact</span>
-                    <input
-                      type="text"
+                    <textarea
                       value={formData.sales}
                       onChange={event => handleInputChange('sales', event.target.value)}
-                      placeholder="$50K increase, 25% revenue boost"
-                      className="upload-flow__input"
+                      placeholder="$50K monthly revenue increase&#10;25% boost in conversion rates&#10;ROI: 300% within 6 months"
+                      className="upload-flow__textarea"
+                      rows={3}
                     />
                   </label>
 
                   <label className="upload-flow__field">
                     <span>Engagement/Usage metrics</span>
-                    <input
-                      type="text"
+                    <textarea
                       value={formData.engagement}
                       onChange={event => handleInputChange('engagement', event.target.value)}
-                      placeholder="45% user engagement increase"
-                      className="upload-flow__input"
+                      placeholder="45% increase in user engagement&#10;2x daily active users&#10;67% reduction in bounce rate"
+                      className="upload-flow__textarea"
+                      rows={3}
                     />
                   </label>
                 </div>
 
                 <label className="upload-flow__field">
                   <span>Awards/Recognition</span>
-                  <input
-                    type="text"
+                  <textarea
                     value={formData.awards}
                     onChange={event => handleInputChange('awards', event.target.value)}
-                    placeholder="Webby Award 2024, Design Excellence"
-                    className="upload-flow__input"
+                    placeholder="Webby Award 2024 - Best User Experience&#10;Design Excellence Award&#10;Featured on Product Hunt"
+                    className="upload-flow__textarea"
+                    rows={3}
                   />
                 </label>
 
                 <label className="upload-flow__field">
                   <span>Other measurable impact</span>
-                  <input
-                    type="text"
+                  <textarea
                     value={formData.metricsOther}
                     onChange={event => handleInputChange('metricsOther', event.target.value)}
-                    placeholder="500K downloads, featured on Product Hunt"
-                    className="upload-flow__input"
+                    placeholder="500K downloads in first month&#10;Featured in TechCrunch&#10;Adopted by 50+ companies"
+                    className="upload-flow__textarea"
+                    rows={3}
                   />
                 </label>
               </div>

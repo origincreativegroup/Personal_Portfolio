@@ -80,7 +80,53 @@ const readStore = (): Store => {
   return normalised
 }
 
-const writeStore = (store: Store) => localStorage.setItem(KEY, JSON.stringify(store))
+const writeStore = (store: Store) => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(store))
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      // Storage quota exceeded - throw a more helpful error
+      const usage = getStorageUsage()
+      throw new Error(`Storage quota exceeded. Current usage: ${usage.used}MB / ${usage.available}MB. Consider deleting old projects or large assets.`)
+    }
+    throw error
+  }
+}
+
+export function getStorageUsage() {
+  let used = 0
+  let available = 10 // Default localStorage limit in MB
+  
+  // Calculate current usage
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      used += localStorage[key].length
+    }
+  }
+  
+  // Convert bytes to MB
+  used = Math.round((used * 2) / (1024 * 1024) * 100) / 100 // *2 for UTF-16 encoding
+  
+  return { used, available, percentage: Math.round((used / available) * 100) }
+}
+
+export function clearAllProjects() {
+  localStorage.removeItem(KEY)
+}
+
+export function getProjectSizes(): Array<{slug: string, title: string, size: number, sizeMB: string}> {
+  const store = readStore()
+  return Object.values(store).map(project => {
+    const size = JSON.stringify(project).length * 2 // UTF-16 encoding
+    const sizeMB = Math.round((size / (1024 * 1024)) * 100) / 100
+    return {
+      slug: project.slug,
+      title: project.title,
+      size,
+      sizeMB: `${sizeMB}MB`
+    }
+  }).sort((a, b) => b.size - a.size)
+}
 
 export function saveProject(meta: ProjectMeta) {
   const store = readStore()

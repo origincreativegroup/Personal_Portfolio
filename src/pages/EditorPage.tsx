@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import ProjectFileExplorer from '../components/ProjectFileExplorer'
 import ProjectAssetEditor from '../components/projectdash'
-import { loadProject, saveProject } from '../utils/fileStore'
+import { loadProject, saveProject, deleteProject } from '../utils/storageManager'
 import type { ProjectAsset, ProjectMeta } from '../intake/schema'
 
 type FormState = {
@@ -66,25 +66,38 @@ const readFileAsDataUrl = (file: File) =>
 
 export default function EditorPage() {
   const { slug } = useParams()
+  const navigate = useNavigate()
   const [project, setProject] = useState<ProjectMeta | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [formState, setFormState] = useState<FormState>(initialFormState)
   const [isDirty, setIsDirty] = useState(false)
   const [formFeedback, setFormFeedback] = useState<Feedback | null>(null)
   const [assetFeedback, setAssetFeedback] = useState<Feedback | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const assetInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    setIsLoading(true)
-    if (!slug) {
-      setProject(null)
-      setIsLoading(false)
-      return
-    }
+    const loadProjectData = async () => {
+      setIsLoading(true)
+      if (!slug) {
+        setProject(null)
+        setIsLoading(false)
+        return
+      }
 
-    const meta = loadProject(slug)
-    setProject(meta)
-    setIsLoading(false)
+      try {
+        const meta = await loadProject(slug)
+        setProject(meta)
+      } catch (error) {
+        console.error('Failed to load project:', error)
+        setProject(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadProjectData()
   }, [slug])
 
   useEffect(() => {
@@ -131,7 +144,7 @@ export default function EditorPage() {
     setIsDirty(true)
   }
 
-  const handleSave = (event?: React.FormEvent) => {
+  const handleSave = async (event?: React.FormEvent) => {
     event?.preventDefault()
     if (!project) {
       return
@@ -153,7 +166,7 @@ export default function EditorPage() {
     }
 
     try {
-      saveProject(updatedProject)
+      await saveProject(updatedProject)
       setProject(updatedProject)
       setIsDirty(false)
       setFormFeedback({ type: 'success', message: 'Project details updated.' })
@@ -210,7 +223,7 @@ export default function EditorPage() {
       updatedAt: timestamp,
     }
 
-    saveProject(updatedProject)
+    await saveProject(updatedProject)
     setProject(updatedProject)
 
     setAssetFeedback({
@@ -222,7 +235,7 @@ export default function EditorPage() {
     })
   }
 
-  const handleAssetRemove = (assetId: string) => {
+  const handleAssetRemove = async (assetId: string) => {
     if (!project) {
       return
     }
@@ -235,12 +248,12 @@ export default function EditorPage() {
       updatedAt: timestamp,
     }
 
-    saveProject(updatedProject)
+    await saveProject(updatedProject)
     setProject(updatedProject)
     setAssetFeedback({ type: 'success', message: 'Asset removed from project.' })
   }
 
-  const handleAssetUpdate = (assetId: string, updates: Partial<ProjectAsset>) => {
+  const handleAssetUpdate = async (assetId: string, updates: Partial<ProjectAsset>) => {
     if (!project) {
       return
     }
@@ -256,12 +269,12 @@ export default function EditorPage() {
       updatedAt: timestamp,
     }
 
-    saveProject(updatedProject)
+    await saveProject(updatedProject)
     setProject(updatedProject)
     setAssetFeedback({ type: 'success', message: 'Asset details updated.' })
   }
 
-  const handleAssetReorder = (assetId: string, direction: 'up' | 'down') => {
+  const handleAssetReorder = async (assetId: string, direction: 'up' | 'down') => {
     if (!project) {
       return
     }
@@ -287,9 +300,28 @@ export default function EditorPage() {
       updatedAt: timestamp,
     }
 
-    saveProject(updatedProject)
+    await saveProject(updatedProject)
     setProject(updatedProject)
     setAssetFeedback({ type: 'success', message: 'Asset order updated.' })
+  }
+
+  const handleDeleteProject = async () => {
+    if (!project || !slug) {
+      return
+    }
+
+    if (deleteConfirmText !== 'DELETE') {
+      return
+    }
+
+    try {
+      await deleteProject(slug)
+      navigate('/intake')
+    } catch (error) {
+      console.error('Failed to delete project', error)
+      setFormFeedback({ type: 'error', message: 'Failed to delete project. Please try again.' })
+      setShowDeleteModal(false)
+    }
   }
 
   const assetCount = project?.assets.length ?? 0
@@ -335,7 +367,16 @@ export default function EditorPage() {
           <p className="editor-page__eyebrow">Project workspace</p>
           <h1>{project.title}</h1>
         </div>
-        <Link to="/intake" className="button button--ghost">Switch project</Link>
+        <div className="editor-page__header-actions">
+          <Link to="/intake" className="button button--ghost">Switch project</Link>
+          <button 
+            type="button" 
+            className="button button--ghost button--danger"
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete project
+          </button>
+        </div>
       </header>
 
       <div className="editor-page__grid">
@@ -531,10 +572,66 @@ export default function EditorPage() {
         </section>
 
         <section className="editor-page__card editor-page__card--placeholder">
-          <h2>Portfolio editor</h2>
+          <h2>Project editor</h2>
           <p>The visual editor is in progress. For now, organise your files above and keep iterating on the narrative.</p>
         </section>
       </div>
+
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2>Delete Project</h2>
+              <button 
+                type="button" 
+                className="modal__close"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal__body">
+              <p>
+                <strong>This action cannot be undone.</strong>
+              </p>
+              <p>
+                This will permanently delete "{project.title}" and all associated assets.
+              </p>
+              <p>
+                To confirm deletion, type <strong>DELETE</strong> in the field below:
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="modal__input"
+                autoFocus
+              />
+            </div>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setDeleteConfirmText('')
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button--danger"
+                onClick={handleDeleteProject}
+                disabled={deleteConfirmText !== 'DELETE'}
+              >
+                Delete Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
