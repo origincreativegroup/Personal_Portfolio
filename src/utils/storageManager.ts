@@ -1,7 +1,34 @@
 // Hybrid storage manager that handles both localStorage and IndexedDB
 import type { ProjectMeta } from '../intake/schema'
-import { indexedDbStore, isIndexedDBSupported } from './indexedDbStore'
-import * as fileStore from './fileStore'
+import {
+  indexedDbStore as defaultIndexedDbStore,
+  isIndexedDBSupported as defaultIsIndexedDBSupported
+} from './indexedDbStore'
+import * as defaultFileStore from './fileStore'
+
+type StorageDependencies = {
+  indexedDbStore: typeof defaultIndexedDbStore
+  fileStore: typeof defaultFileStore
+  isIndexedDBSupported: typeof defaultIsIndexedDBSupported
+}
+
+let dependencies: StorageDependencies = {
+  indexedDbStore: defaultIndexedDbStore,
+  fileStore: defaultFileStore,
+  isIndexedDBSupported: defaultIsIndexedDBSupported
+}
+
+export const setStorageDependencies = (overrides: Partial<StorageDependencies>) => {
+  dependencies = { ...dependencies, ...overrides }
+}
+
+export const resetStorageDependencies = () => {
+  dependencies = {
+    indexedDbStore: defaultIndexedDbStore,
+    fileStore: defaultFileStore,
+    isIndexedDBSupported: defaultIsIndexedDBSupported
+  }
+}
 
 export type StorageType = 'localStorage' | 'indexedDB'
 
@@ -13,10 +40,12 @@ class StorageManager {
     if (this.initialized) return
 
     // Check which storage to use
+    const { indexedDbStore, fileStore, isIndexedDBSupported } = dependencies
+
     if (isIndexedDBSupported()) {
       try {
         await indexedDbStore.init()
-        
+
         // Check if we should migrate from localStorage
         const localProjects = fileStore.listProjects()
         const indexedProjects = await indexedDbStore.listProjects()
@@ -41,6 +70,7 @@ class StorageManager {
   }
 
   private async migrateFromLocalStorage(): Promise<void> {
+    const { indexedDbStore, fileStore } = dependencies
     const projects = fileStore.listProjects()
     
     for (const project of projects) {
@@ -56,7 +86,8 @@ class StorageManager {
 
   async saveProject(project: ProjectMeta): Promise<void> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.saveProject(project)
     } else {
@@ -66,7 +97,8 @@ class StorageManager {
 
   async loadProject(slug: string): Promise<ProjectMeta | null> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.loadProject(slug)
     } else {
@@ -76,7 +108,8 @@ class StorageManager {
 
   async listProjects(): Promise<ProjectMeta[]> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.listProjects()
     } else {
@@ -86,7 +119,8 @@ class StorageManager {
 
   async deleteProject(slug: string): Promise<void> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.deleteProject(slug)
     } else {
@@ -96,7 +130,8 @@ class StorageManager {
 
   async clearAllProjects(): Promise<void> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.clearAllProjects()
     } else {
@@ -106,7 +141,8 @@ class StorageManager {
 
   async getStorageUsage(): Promise<{used: number, available: number, percentage: number, type: StorageType}> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     let usage
     if (this.currentStorage === 'indexedDB') {
       usage = await indexedDbStore.getStorageUsage()
@@ -119,7 +155,8 @@ class StorageManager {
 
   async getProjectSizes(): Promise<Array<{slug: string, title: string, size: number, sizeMB: string}>> {
     await this.init()
-    
+    const { indexedDbStore, fileStore } = dependencies
+
     if (this.currentStorage === 'indexedDB') {
       return indexedDbStore.getProjectSizes()
     } else {
@@ -156,6 +193,14 @@ class StorageManager {
       }
     }
   }
+
+  /**
+   * Resets the manager so tests can start from a known state.
+   */
+  resetForTesting(): void {
+    this.currentStorage = 'localStorage'
+    this.initialized = false
+  }
 }
 
 // Create singleton instance
@@ -169,3 +214,5 @@ export const deleteProject = (slug: string) => storageManager.deleteProject(slug
 export const clearAllProjects = () => storageManager.clearAllProjects()
 export const getStorageUsage = () => storageManager.getStorageUsage()
 export const getProjectSizes = () => storageManager.getProjectSizes()
+
+export const resetStorageManagerForTesting = () => storageManager.resetForTesting()
