@@ -27,7 +27,27 @@ import type { LucideIcon } from 'lucide-react'
 import './PortfolioForgeAIAnalysis.css'
 import PortfolioHierarchy from '../components/PortfolioHierarchy'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '')
+
+const resolveApiBaseUrl = (): string => {
+  const configured = import.meta.env.VITE_API_BASE_URL
+
+  if (typeof configured === 'string' && configured.trim().length > 0) {
+    return stripTrailingSlashes(configured.trim())
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.port === '5173') {
+      return 'http://localhost:3001'
+    }
+
+    return stripTrailingSlashes(window.location.origin)
+  }
+
+  return 'http://localhost:3001'
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
 const DEFAULT_USER_ID = import.meta.env.VITE_ANALYSIS_USER_ID ?? 'demo-user'
 
 type AnalysisStep = 'idle' | 'analyzing' | 'complete' | 'failed'
