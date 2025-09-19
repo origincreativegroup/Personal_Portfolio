@@ -1,0 +1,377 @@
+.portfolio-hierarchy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 1rem;
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.9));
+}
+
+.analysis-page--dark .portfolio-hierarchy {
+  border-color: rgba(51, 65, 85, 0.6);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.92));
+}
+
+.portfolio-hierarchy__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.portfolio-hierarchy__header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+}
+
+.analysis-page--dark .portfolio-hierarchy__header-icon {
+  background: rgba(129, 140, 248, 0.22);
+  color: #c7d2fe;
+}
+
+.portfolio-hierarchy__eyebrow {
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: #64748b;
+  margin: 0 0 0.15rem;
+}
+
+.analysis-page--dark .portfolio-hierarchy__eyebrow {
+  color: #94a3b8;
+}
+
+.portfolio-hierarchy__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.analysis-page--dark .portfolio-hierarchy__title {
+  color: #e2e8f0;
+}
+
+.portfolio-hierarchy__status {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.analysis-page--dark .portfolio-hierarchy__status {
+  color: #c7d2fe;
+}
+
+.portfolio-hierarchy__tree {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.75rem 0.5rem;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.analysis-page--dark .portfolio-hierarchy__tree {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(51, 65, 85, 0.55);
+}
+
+.portfolio-hierarchy__root-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  margin-bottom: 0.5rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.analysis-page--dark .portfolio-hierarchy__root-header {
+  color: #cbd5f5;
+  border-bottom-color: rgba(71, 85, 105, 0.5);
+}
+
+.portfolio-hierarchy__root-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+}
+
+.analysis-page--dark .portfolio-hierarchy__root-icon {
+  color: #818cf8;
+}
+
+.portfolio-hierarchy__root-label {
+  font-size: 0.9rem;
+}
+
+.portfolio-hierarchy__root-meta {
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.portfolio-hierarchy__projects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0 0.25rem;
+}
+
+.portfolio-hierarchy__project {
+  border-radius: 12px;
+  background: rgba(241, 245, 249, 0.6);
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.analysis-page--dark .portfolio-hierarchy__project {
+  background: rgba(30, 41, 59, 0.7);
+}
+
+.portfolio-hierarchy__project--drop {
+  border-color: rgba(79, 70, 229, 0.55);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.portfolio-hierarchy__project-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.portfolio-hierarchy__project-button:hover,
+.portfolio-hierarchy__project-button:focus-visible {
+  outline: none;
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-button:hover,
+.analysis-page--dark .portfolio-hierarchy__project-button:focus-visible {
+  background: rgba(129, 140, 248, 0.18);
+}
+
+.portfolio-hierarchy__project-button--active {
+  background: rgba(79, 70, 229, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.35);
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-button--active {
+  background: rgba(129, 140, 248, 0.24);
+}
+
+.portfolio-hierarchy__project-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-toggle {
+  color: #cbd5f5;
+}
+
+.portfolio-hierarchy__project-accent {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.portfolio-hierarchy__project-title {
+  font-weight: 600;
+  text-align: left;
+  color: #0f172a;
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-title {
+  color: #e2e8f0;
+}
+
+.portfolio-hierarchy__project-meta {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-meta {
+  color: #94a3b8;
+}
+
+.portfolio-hierarchy__project-handle {
+  color: #94a3b8;
+}
+
+.analysis-page--dark .portfolio-hierarchy__project-handle {
+  color: #cbd5f5;
+}
+
+.portfolio-hierarchy__asset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.75rem 0.6rem 2.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.portfolio-hierarchy__asset {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid transparent;
+  cursor: grab;
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.portfolio-hierarchy__asset:hover {
+  border-color: rgba(79, 70, 229, 0.25);
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset:hover {
+  border-color: rgba(129, 140, 248, 0.3);
+}
+
+.portfolio-hierarchy__asset--drop-before::before,
+.portfolio-hierarchy__asset--drop-after::after {
+  content: '';
+  position: absolute;
+  left: 2.2rem;
+  right: 0.75rem;
+  height: 2px;
+  background: rgba(79, 70, 229, 0.9);
+  border-radius: 999px;
+}
+
+.portfolio-hierarchy__asset--drop-before {
+  position: relative;
+}
+
+.portfolio-hierarchy__asset--drop-before::before {
+  top: -2px;
+}
+
+.portfolio-hierarchy__asset--drop-after {
+  position: relative;
+}
+
+.portfolio-hierarchy__asset--drop-after::after {
+  bottom: -2px;
+}
+
+.portfolio-hierarchy__asset-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: rgba(79, 70, 229, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset-icon {
+  background: rgba(129, 140, 248, 0.24);
+  color: #c7d2fe;
+}
+
+.portfolio-hierarchy__asset-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset-name {
+  color: #e2e8f0;
+}
+
+.portfolio-hierarchy__asset-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset-meta {
+  color: #cbd5f5;
+}
+
+.portfolio-hierarchy__asset-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset-empty {
+  color: #94a3b8;
+}
+
+.portfolio-hierarchy__asset-dropzone {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  color: #4f46e5;
+  background: rgba(79, 70, 229, 0.08);
+  border-radius: 8px;
+  text-align: center;
+  border: 1px dashed rgba(79, 70, 229, 0.35);
+}
+
+.analysis-page--dark .portfolio-hierarchy__asset-dropzone {
+  color: #c7d2fe;
+  background: rgba(129, 140, 248, 0.15);
+  border-color: rgba(129, 140, 248, 0.45);
+}
+
+.portfolio-hierarchy__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.analysis-page--dark .portfolio-hierarchy__empty {
+  color: #94a3b8;
+}
+
+.portfolio-hierarchy__error {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background: rgba(248, 113, 113, 0.15);
+  color: #b91c1c;
+}
+
+.analysis-page--dark .portfolio-hierarchy__error {
+  background: rgba(248, 113, 113, 0.25);
+  color: #fecaca;
+}
