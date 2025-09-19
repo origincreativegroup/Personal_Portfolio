@@ -10,6 +10,19 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, _res, next) => {
+  const headerUserId = req.header('x-user-id');
+  const devUserId = process.env.DEV_USER_ID ?? (process.env.NODE_ENV !== 'production' ? 'demo-user' : undefined);
+
+  if (headerUserId || devUserId) {
+    req.user = {
+      id: headerUserId ?? devUserId!,
+    };
+  }
+
+  next();
+});
+
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
