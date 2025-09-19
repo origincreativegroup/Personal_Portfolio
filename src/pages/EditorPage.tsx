@@ -2,8 +2,17 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import ProjectFileExplorer from '../components/ProjectFileExplorer'
 import ProjectAssetEditor from '../components/projectdash'
+import ProjectEditor from '../components/ProjectEditor'
 import { loadProject, saveProject, deleteProject } from '../utils/storageManager'
-import type { ProjectAsset, ProjectMeta } from '../intake/schema'
+import type {
+  GalleryBlockContent,
+  HeroBlockContent,
+  ImageBlockContent,
+  ProjectAsset,
+  ProjectLayoutBlock,
+  ProjectMeta,
+  VideoBlockContent,
+} from '../intake/schema'
 import { generateVideoThumbnail } from '../utils/videoThumbnails'
 
 type FormState = {
@@ -37,14 +46,66 @@ const createAssetId = () =>
     ? crypto.randomUUID()
     : `asset-${Date.now()}-${Math.random().toString(16).slice(2)}`
 
-const formatBytes = (bytes: number) => {
-  if (!Number.isFinite(bytes) || bytes <= 0) {
-    return '0 B'
+type LayoutUpdateResult = { layout: ProjectLayoutBlock[] | undefined; changed: boolean }
+
+const detachAssetFromLayout = (
+  layout: ProjectLayoutBlock[] | undefined,
+  assetId: string,
+): LayoutUpdateResult => {
+  if (!layout || layout.length === 0) {
+    return { layout, changed: false }
   }
-  const units = ['B', 'KB', 'MB', 'GB']
-  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  const value = bytes / 1024 ** exponent
-  return `${value >= 10 || exponent === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`
+
+  let mutated = false
+
+  const cleaned = layout.map(block => {
+    switch (block.type) {
+      case 'hero': {
+        const heroContent = block.content as HeroBlockContent
+        if (heroContent.assetId === assetId) {
+          mutated = true
+          return { ...block, content: { ...heroContent, assetId: null } }
+        }
+        return block
+      }
+      case 'image': {
+        const imageContent = block.content as ImageBlockContent
+        if (imageContent.assetId === assetId) {
+          mutated = true
+          return { ...block, content: { ...imageContent, assetId: null } }
+        }
+        return block
+      }
+      case 'video': {
+        const videoContent = block.content as VideoBlockContent
+        if (videoContent.assetId === assetId) {
+          mutated = true
+          return { ...block, content: { ...videoContent, assetId: null } }
+        }
+        return block
+      }
+      case 'gallery': {
+        const galleryContent = block.content as GalleryBlockContent
+        const items = galleryContent.items.filter(item => item.assetId !== assetId)
+        if (items.length !== galleryContent.items.length) {
+          mutated = true
+          return { ...block, content: { ...galleryContent, items } }
+        }
+        return block
+      }
+      default:
+        return block
+    }
+  })
+
+  const filtered = cleaned.filter(block =>
+    block.type !== 'gallery' || ((block.content as GalleryBlockContent).items?.length ?? 0) > 0,
+  )
+
+  return {
+    layout: filtered,
+    changed: mutated || filtered.length !== layout.length,
+  }
 }
 
 // Remove size limits - allow unlimited asset uploads
@@ -145,6 +206,27 @@ export default function EditorPage() {
     setIsDirty(true)
   }
 
+  const handleProjectUpdate = async (updates: Partial<ProjectMeta>) => {
+    if (!project) {
+      return
+    }
+
+    const timestamp = new Date().toISOString()
+    const updatedProject: ProjectMeta = {
+      ...project,
+      ...updates,
+      updatedAt: timestamp,
+    }
+
+    try {
+      await saveProject(updatedProject)
+      setProject(updatedProject)
+    } catch (error) {
+      console.error('Unable to update project', error)
+      throw error
+    }
+  }
+
   const handleSave = async (event?: React.FormEvent) => {
     event?.preventDefault()
     if (!project) {
@@ -153,22 +235,15 @@ export default function EditorPage() {
 
     const tags = parseList(formState.tags)
     const technologies = parseList(formState.technologies)
-    const timestamp = new Date().toISOString()
-
-    const updatedProject: ProjectMeta = {
-      ...project,
-      title: formState.title.trim() || project.title,
-      problem: formState.problem.trim(),
-      solution: formState.solution.trim(),
-      outcomes: formState.outcomes.trim(),
-      tags,
-      technologies: technologies.length > 0 ? technologies : undefined,
-      updatedAt: timestamp,
-    }
-
     try {
-      await saveProject(updatedProject)
-      setProject(updatedProject)
+      await handleProjectUpdate({
+        title: formState.title.trim() || project.title,
+        problem: formState.problem.trim(),
+        solution: formState.solution.trim(),
+        outcomes: formState.outcomes.trim(),
+        tags,
+        technologies: technologies.length > 0 ? technologies : undefined,
+      })
       setIsDirty(false)
       setFormFeedback({ type: 'success', message: 'Project details updated.' })
     } catch (error) {
@@ -228,15 +303,9 @@ export default function EditorPage() {
       return
     }
 
-    const timestamp = new Date().toISOString()
-    const updatedProject: ProjectMeta = {
-      ...project,
+    await handleProjectUpdate({
       assets: [...project.assets, ...additions],
-      updatedAt: timestamp,
-    }
-
-    await saveProject(updatedProject)
-    setProject(updatedProject)
+    })
 
     setAssetFeedback({
       type: skipped.length > 0 ? 'info' : 'success',
@@ -253,15 +322,21 @@ export default function EditorPage() {
     }
 
     const updatedAssets = project.assets.filter(asset => asset.id !== assetId)
-    const timestamp = new Date().toISOString()
-    const updatedProject: ProjectMeta = {
-      ...project,
+    const { layout: nextLayout, changed } = detachAssetFromLayout(project.layout, assetId)
+
+    const updates: Partial<ProjectMeta> = {
       assets: updatedAssets,
-      updatedAt: timestamp,
     }
 
-    await saveProject(updatedProject)
-    setProject(updatedProject)
+    if (changed) {
+      updates.layout = nextLayout
+    }
+
+    if (project.cover === assetId) {
+      updates.cover = undefined
+    }
+
+    await handleProjectUpdate(updates)
     setAssetFeedback({ type: 'success', message: 'Asset removed from project.' })
   }
 
@@ -274,15 +349,7 @@ export default function EditorPage() {
       asset.id === assetId ? { ...asset, ...updates } : asset,
     )
 
-    const timestamp = new Date().toISOString()
-    const updatedProject: ProjectMeta = {
-      ...project,
-      assets: updatedAssets,
-      updatedAt: timestamp,
-    }
-
-    await saveProject(updatedProject)
-    setProject(updatedProject)
+    await handleProjectUpdate({ assets: updatedAssets })
     setAssetFeedback({ type: 'success', message: 'Asset details updated.' })
   }
 
@@ -305,15 +372,7 @@ export default function EditorPage() {
     const [moved] = reordered.splice(index, 1)
     reordered.splice(targetIndex, 0, moved)
 
-    const timestamp = new Date().toISOString()
-    const updatedProject: ProjectMeta = {
-      ...project,
-      assets: reordered,
-      updatedAt: timestamp,
-    }
-
-    await saveProject(updatedProject)
-    setProject(updatedProject)
+    await handleProjectUpdate({ assets: reordered })
     setAssetFeedback({ type: 'success', message: 'Asset order updated.' })
   }
 
@@ -583,9 +642,8 @@ export default function EditorPage() {
           />
         </section>
 
-        <section className="editor-page__card editor-page__card--placeholder">
-          <h2>Project editor</h2>
-          <p>The visual editor is in progress. For now, organise your files above and keep iterating on the narrative.</p>
+        <section className="editor-page__card editor-page__card--editor">
+          <ProjectEditor project={project} onUpdateProject={handleProjectUpdate} />
         </section>
       </div>
 
