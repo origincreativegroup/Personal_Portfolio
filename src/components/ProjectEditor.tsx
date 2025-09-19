@@ -934,7 +934,9 @@ function BlockContent({ block, project, assets }: BlockContentProps) {
               loop={videoContent.loop ?? false}
               muted={videoContent.muted ?? false}
               playsInline
+              preload="metadata"
               poster={asset.thumbnailUrl ?? undefined}
+              style={{ display: 'block' }}
             >
               <source src={asset.dataUrl} type={asset.mimeType} />
               Your browser does not support the video tag.
