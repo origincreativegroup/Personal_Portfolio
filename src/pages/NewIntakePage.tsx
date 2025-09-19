@@ -7,6 +7,9 @@ import {
   HelpCircle, BookOpen, Layout
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { newProject } from '../intake/schema';
+import { buildCaseStudyTemplate } from '../utils/caseStudyTemplates';
+import { saveProject } from '../utils/storageManager';
 
 const NewIntakePage = () => {
   const navigate = useNavigate();
@@ -90,10 +93,25 @@ const NewIntakePage = () => {
     setActiveStep(3);
   };
 
-  const handleProjectSubmit = () => {
-    // Handle project creation and navigate to editor
-    console.log('Creating project:', formData);
-    navigate(`/editor/${formData.projectName.toLowerCase().replace(/\s+/g, '-')}`);
+  const handleProjectSubmit = async () => {
+    const title = formData.projectName.trim();
+    if (!title) {
+      return;
+    }
+
+    const project = newProject(title);
+    project.summary = formData.description.trim() || undefined;
+    project.problem = formData.description.trim();
+    project.solution = 'Use the editor to describe the approach, process, and collaboration.';
+    project.outcomes = 'Add measurable impact or learnings from the project in the editor.';
+    project.tags = Array.isArray(formData.tags) ? formData.tags : [];
+
+    const template = buildCaseStudyTemplate(project);
+    project.caseStudyHtml = template.html;
+    project.caseStudyCss = template.css;
+
+    await saveProject(project);
+    navigate(`/editor/${project.slug}`);
   };
 
   const selectedCategory = projectCategories.find(cat => cat.id === formData.category);

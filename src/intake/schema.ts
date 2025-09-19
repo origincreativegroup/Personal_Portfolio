@@ -142,6 +142,8 @@ export type ProjectMeta = {
   updatedAt?: string
   assets: ProjectAsset[]
   layout?: ProjectLayoutBlock[]
+  caseStudyHtml?: string
+  caseStudyCss?: string
 
   // AI Integration
   autoGenerateNarrative?: boolean
