@@ -1,9 +1,23 @@
 import OpenAI from 'openai';
-import { PrismaClient, Project, ProjectFile, FileAnalysis } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { AnalysisResult, AnalysisInsight } from '../types/analysis';
 
-type ProjectWithFiles = Project & {
-  files: Array<ProjectFile & { analysis: FileAnalysis | null }>;
+type ProjectWithFiles = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  files: Array<{
+    id: string;
+    name: string;
+    mimeType: string;
+    analysis: {
+      status: string;
+      insights: unknown;
+      extractedText: string | null;
+      metadata: unknown;
+    } | null;
+  }>;
 };
 
 export class AIAnalysisService {

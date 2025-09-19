@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   AlertCircle,
   ArrowRight,
@@ -7,11 +8,13 @@ import {
   ChevronDown,
   ChevronRight,
   Edit3,
+  File as FileIcon,
   FileText,
   Image,
   Lightbulb,
   MessageSquare,
   Moon,
+  Music,
   RefreshCw,
   Sparkles,
   Sun,
@@ -23,17 +26,36 @@ import type { LucideIcon } from 'lucide-react'
 
 import './PortfolioForgeAIAnalysis.css'
 
-type AnalysisStep = 'analyzing' | 'complete'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const DEFAULT_USER_ID = import.meta.env.VITE_ANALYSIS_USER_ID ?? 'demo-user'
+
+type AnalysisStep = 'idle' | 'analyzing' | 'complete' | 'failed'
 
 type SuggestionType = 'problem' | 'solution' | 'impact' | 'narrative'
 
 type AnalysisSectionKey = SuggestionType
 
-type ProjectFile = {
+type FileStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+type FileType = 'image' | 'video' | 'document' | 'audio' | 'other'
+
+type FileInsight = {
+  content: string
+  type?: string
+  confidence?: number
+  source?: string
+}
+
+type AnalysisFile = {
   id: string
   name: string
-  type: 'image' | 'video' | 'document'
-  insights: string[]
+  mimeType: string
+  size: number
+  status: FileStatus
+  insights: FileInsight[]
+  extractedText: string | null
+  metadata: unknown
+  updatedAt?: string
 }
 
 type ProblemAnalysis = {
@@ -84,115 +106,77 @@ type AIAnalysis = {
   suggestedCategory: string
 }
 
-const PROJECT_FILES: ProjectFile[] = [
-  {
-    id: 'f1',
-    name: 'Before-After-Comparison.png',
-    type: 'image',
-    insights: ['UI comparison', 'Design evolution', 'User interface improvement'],
-  },
-  {
-    id: 'f2',
-    name: 'User-Journey-Map.pdf',
-    type: 'document',
-    insights: ['User flow analysis', 'Pain point identification', 'Experience mapping'],
-  },
-  {
-    id: 'f3',
-    name: 'Prototype-Demo.mp4',
-    type: 'video',
-    insights: ['Interactive prototype', 'User testing', 'Feature demonstration'],
-  },
-  {
-    id: 'f4',
-    name: 'Analytics-Dashboard.png',
-    type: 'image',
-    insights: ['Performance metrics', 'User behavior data', 'Success indicators'],
-  },
-]
-
-const AI_ANALYSIS: AIAnalysis = {
-  confidence: 94,
-  processingTime: '2.3s',
-  filesAnalyzed: 8,
-  insights: 23,
-  problem: {
-    primary: 'Low user engagement and high abandonment rates in the checkout process',
-    confidence: 92,
-    evidence: [
-      'User journey map shows 68% drop-off at payment step',
-      'Before/after comparison reveals cluttered UI design',
-      'Analytics dashboard indicates 3.2 minute average completion time',
-      'User feedback mentions confusion about shipping options',
-    ],
-    alternatives: [
-      'Complex navigation structure causing user confusion',
-      'Lack of trust signals during payment process',
-      'Mobile responsiveness issues affecting conversion',
-    ],
-  },
-  solution: {
-    primary: 'Streamlined checkout flow with progressive disclosure and trust signals',
-    confidence: 89,
-    keyElements: [
-      'Reduced form fields from 12 to 6 essential inputs',
-      'Added progress indicators and breadcrumbs',
-      'Implemented guest checkout option',
-      'Enhanced mobile-first responsive design',
-      'Added security badges and payment icons',
-    ],
-    designPatterns: [
-      'Progressive disclosure',
-      'Single-page checkout',
-      'Auto-fill functionality',
-      'Error prevention and handling',
-    ],
-  },
-  impact: {
-    primary: '78% improvement in checkout completion rates',
-    confidence: 87,
-    metrics: [
-      { metric: 'Conversion Rate', before: '12.4%', after: '22.1%', change: '+78%' },
-      { metric: 'Completion Time', before: '3.2 min', after: '1.8 min', change: '-44%' },
-      { metric: 'User Satisfaction', before: '6.2/10', after: '8.7/10', change: '+40%' },
-      { metric: 'Mobile Conversions', before: '8.1%', after: '19.3%', change: '+138%' },
-    ],
-    businessValue: 'Generated an estimated $2.4M additional annual revenue',
-  },
-  narrative: {
-    story:
-      'This e-commerce checkout redesign transformed a frustrating user experience into a seamless conversion engine. By analyzing user behavior data and conducting usability testing, we identified that users were overwhelmed by too many form fields and lacked confidence in the security of their transaction. The solution focused on simplification and trust-building, resulting in a checkout process that not only converts better but also creates a positive lasting impression of the brand.',
-    challenges: [
-      'Balancing information collection needs with user experience',
-      'Maintaining security compliance while reducing friction',
-      'Ensuring mobile optimization without desktop compromise',
-    ],
-    process: [
-      'User research and behavior analysis',
-      'Competitive analysis and best practice review',
-      'Wireframing and prototype development',
-      'A/B testing and iterative refinement',
-      'Full deployment and performance monitoring',
-    ],
-  },
-  tags: [
-    'E-commerce',
-    'UX Design',
-    'Conversion Optimization',
-    'Mobile-First',
-    'User Research',
-    'A/B Testing',
-    'Checkout Flow',
-    'UI/UX',
-  ],
-  suggestedTitle: 'E-commerce Checkout Redesign: 78% Conversion Improvement',
-  suggestedCategory: 'UX/UI Design',
+type ProjectSuggestionPayload = {
+  title?: string
+  category?: string
+  description?: string
 }
 
-const FILE_ICONS: Record<ProjectFile['type'], LucideIcon> = {
-  image: Image,
-  video: Video,
-  document: FileText,
+type AnalysisStatusResponse = {
+  project: {
+    id: string
+    name: string
+    description: string | null
+    category: string | null
+    fileCount: number
+    updatedAt: string
+  }
+  analysis: {
+    status: string
+    confidence: number | null
+    processingTime: number | null
+    filesAnalyzed: number
+    insightsFound: number
+    suggestedTitle: string | null
+    suggestedCategory: string | null
+    suggestedTags: string[]
+    updatedAt: string | null
+    startedAt: string | null
+  }
+  fileAnalyses: Array<{
+    id: string
+    name: string
+    mimeType: string
+    size: number
+    status: FileStatus
+    insights: FileInsight[]
+    extractedText: string | null
+    metadata: unknown
+    updatedAt: string | null
+  }>
+}
+
+type AnalysisResultResponse = {
+  confidence: number | null
+  processingTime: number | null
+  filesAnalyzed: number
+  insights: number
+  problem: {
+    primary: string
+    confidence: number | null
+    evidence: string[]
+    alternatives: string[]
+  }
+  solution: {
+    primary: string
+    confidence: number | null
+    keyElements: string[]
+    designPatterns: string[]
+  }
+  impact: {
+    primary: string
+    confidence: number | null
+    metrics: ImpactMetric[]
+    businessValue: string
+  }
+  narrative: {
+    story: string
+    challenges: string[]
+    process: string[]
+  }
+  suggestedTitle: string
+  suggestedCategory: string
+  tags: string[]
 }
 
 const INITIAL_SECTIONS: Record<AnalysisSectionKey, boolean> = {
@@ -201,6 +185,223 @@ const INITIAL_SECTIONS: Record<AnalysisSectionKey, boolean> = {
   impact: false,
   narrative: false,
 }
+
+const FILE_ICONS: Record<FileType, LucideIcon> = {
+  image: Image,
+  video: Video,
+  document: FileText,
+  audio: Music,
+  other: FileIcon,
+}
+
+const STATUS_LABELS: Record<FileStatus, string> = {
+  pending: 'Pending',
+  processing: 'Processing',
+  completed: 'Completed',
+  failed: 'Failed',
+}
+
+const determineFileType = (mimeType: string): FileType => {
+  const normalized = mimeType.toLowerCase()
+
+  if (normalized.startsWith('image/')) {
+    return 'image'
+  }
+  if (normalized.startsWith('video/')) {
+    return 'video'
+  }
+  if (normalized.startsWith('audio/')) {
+    return 'audio'
+  }
+  if (
+    normalized.includes('pdf') ||
+    normalized.includes('text') ||
+    normalized.includes('word') ||
+    normalized.includes('presentation') ||
+    normalized.includes('sheet') ||
+    normalized.includes('spreadsheet')
+  ) {
+    return 'document'
+  }
+  return 'other'
+}
+
+const describeInsight = (insight: FileInsight): string => {
+  const prefix = insight.type ? `${insight.type.toUpperCase()}: ` : ''
+  const content = insight.content || 'Insight'
+  if (typeof insight.confidence === 'number') {
+    const percent = Math.round(insight.confidence * 100)
+    return `${prefix}${content} (${percent}% confidence)`
+  }
+  return `${prefix}${content}`
+}
+
+const formatProcessingTime = (seconds: number | null | undefined): string => {
+  if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
+    return '—'
+  }
+  if (seconds < 1) {
+    return `${(seconds * 1000).toFixed(0)}ms`
+  }
+  return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`
+}
+
+const computeProgress = (files: AnalysisFile[], status: string, totalFiles: number): number => {
+  if (status === 'failed') {
+    return 0
+  }
+  if (status === 'completed') {
+    return 100
+  }
+
+  const total = totalFiles > 0 ? totalFiles : files.length
+  if (total === 0) {
+    return status === 'analyzing' ? 10 : 0
+  }
+
+  const completed = files.filter(file => file.status === 'completed').length
+  const inProgress = files.filter(file => file.status === 'processing').length
+
+  let progress = Math.round((completed / total) * 100)
+  if (status === 'analyzing') {
+    progress = Math.max(progress, inProgress > 0 ? 30 : 15)
+    progress = Math.min(progress, 95)
+  }
+  return progress
+}
+
+const mapStatusFiles = (files: AnalysisStatusResponse['fileAnalyses']): AnalysisFile[] =>
+  files.map(file => ({
+    id: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    size: file.size,
+    status: file.status,
+    insights: Array.isArray(file.insights) ? file.insights : [],
+    extractedText: file.extractedText,
+    metadata: file.metadata,
+    updatedAt: file.updatedAt ?? undefined,
+  }))
+const transformResult = (payload: AnalysisResultResponse): AIAnalysis => ({
+  confidence: Math.round(payload.confidence ?? 0),
+  processingTime: formatProcessingTime(payload.processingTime),
+  filesAnalyzed: payload.filesAnalyzed,
+  insights: payload.insights,
+  problem: {
+    primary: payload.problem.primary ?? '',
+    confidence: Math.round(payload.problem.confidence ?? 0),
+    evidence: Array.isArray(payload.problem.evidence) ? payload.problem.evidence : [],
+    alternatives: Array.isArray(payload.problem.alternatives) ? payload.problem.alternatives : [],
+  },
+  solution: {
+    primary: payload.solution.primary ?? '',
+    confidence: Math.round(payload.solution.confidence ?? 0),
+    keyElements: Array.isArray(payload.solution.keyElements) ? payload.solution.keyElements : [],
+    designPatterns: Array.isArray(payload.solution.designPatterns) ? payload.solution.designPatterns : [],
+  },
+  impact: {
+    primary: payload.impact.primary ?? '',
+    confidence: Math.round(payload.impact.confidence ?? 0),
+    metrics: Array.isArray(payload.impact.metrics) ? payload.impact.metrics : [],
+    businessValue: payload.impact.businessValue ?? '',
+  },
+  narrative: {
+    story: payload.narrative.story ?? '',
+    challenges: Array.isArray(payload.narrative.challenges) ? payload.narrative.challenges : [],
+    process: Array.isArray(payload.narrative.process) ? payload.narrative.process : [],
+  },
+  tags: Array.isArray(payload.tags) ? payload.tags : [],
+  suggestedTitle: payload.suggestedTitle ?? '',
+  suggestedCategory: payload.suggestedCategory ?? '',
+})
+
+const buildProjectDescription = (analysis: AIAnalysis, edits: Partial<Record<SuggestionType, string>>): string => {
+  const narrative = (edits.narrative ?? analysis.narrative.story ?? '').trim()
+  const problem = (edits.problem ?? analysis.problem.primary ?? '').trim()
+  const solution = (edits.solution ?? analysis.solution.primary ?? '').trim()
+  const impact = (edits.impact ?? analysis.impact.primary ?? '').trim()
+
+  const sections: string[] = []
+
+  if (narrative) {
+    sections.push(narrative)
+  }
+
+  const summaryParts = [
+    problem ? `Problem: ${problem}` : null,
+    solution ? `Solution: ${solution}` : null,
+    impact ? `Impact: ${impact}` : null,
+  ].filter((value): value is string => Boolean(value))
+
+  if (summaryParts.length > 0) {
+    sections.push(summaryParts.join('\n'))
+  }
+
+  const metricLines = analysis.impact.metrics
+    .map(metric => {
+      const name = metric.metric?.trim()
+      const before = metric.before?.trim()
+      const after = metric.after?.trim()
+      const change = metric.change?.trim()
+
+      const parts: string[] = []
+      if (name) {
+        parts.push(name)
+      }
+      if (before || after) {
+        parts.push(`${before || '—'} → ${after || '—'}`)
+      }
+      if (change) {
+        parts.push(`(${change})`)
+      }
+
+      if (parts.length === 0) {
+        return null
+      }
+
+      return `- ${parts.join(' ')}`
+    })
+    .filter((line): line is string => Boolean(line))
+
+  if (metricLines.length > 0) {
+    sections.push(`Key metrics:\n${metricLines.join('\n')}`)
+  }
+
+  return sections.join('\n\n').trim()
+}
+
+const extractErrorMessage = async (response: Response, fallback: string): Promise<string> => {
+  try {
+    const data = await response.clone().json() as { error?: unknown }
+    if (data && typeof data.error === 'string') {
+      return data.error
+    }
+  } catch {
+    // Ignore JSON parsing issues
+  }
+  try {
+    const text = await response.text()
+    if (text) {
+      return text
+    }
+  } catch {
+    // Ignore
+  }
+  return fallback
+}
+
+const createBaseHeaders = (): HeadersInit => {
+  const headers: HeadersInit = {}
+  if (DEFAULT_USER_ID) {
+    headers['x-user-id'] = DEFAULT_USER_ID
+  }
+  return headers
+}
+
+const createJsonHeaders = (baseHeaders: HeadersInit): HeadersInit => ({
+  ...baseHeaders,
+  'Content-Type': 'application/json',
+})
 
 type AnalysisCardProps = {
   title: string
@@ -248,9 +449,10 @@ type SuggestionCardProps = {
   onApply: () => void
   onEdit?: () => void
   isApplied?: boolean
+  disabled?: boolean
 }
 
-const SuggestionCard = ({ title, content, onApply, onEdit, isApplied }: SuggestionCardProps) => (
+const SuggestionCard = ({ title, content, onApply, onEdit, isApplied, disabled }: SuggestionCardProps) => (
   <div className="analysis-suggestion">
     <div className="analysis-suggestion__header">
       <h4 className="analysis-suggestion__title">{title}</h4>
@@ -266,42 +468,387 @@ const SuggestionCard = ({ title, content, onApply, onEdit, isApplied }: Suggesti
             <Edit3 size={16} />
           </button>
         ) : null}
-        <button type="button" className="button button--primary button--small" onClick={onApply}>
-          Apply
+        <button type="button" className="button button--primary button--small" onClick={onApply} disabled={disabled}>
+          {disabled ? 'Applying…' : 'Apply'}
         </button>
       </div>
     </div>
     <p>{content}</p>
   </div>
 )
-
 export default function PortfolioForgeAIAnalysis() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('analyzing')
+  const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('idle')
   const [analysisProgress, setAnalysisProgress] = useState(0)
-  const [analysisRunId, setAnalysisRunId] = useState(0)
+  const [projectIdInput, setProjectIdInput] = useState(searchParams.get('projectId') ?? '')
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(searchParams.get('projectId'))
+  const [activeProject, setActiveProject] = useState<AnalysisStatusResponse['project'] | null>(null)
+  const [analysisSummary, setAnalysisSummary] = useState<AnalysisStatusResponse['analysis'] | null>(null)
+  const [analysisFiles, setAnalysisFiles] = useState<AnalysisFile[]>([])
+  const [analysisResult, setAnalysisResult] = useState<AIAnalysis | null>(null)
+  const [queuedFiles, setQueuedFiles] = useState(0)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [isPolling, setIsPolling] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedSections, setExpandedSections] = useState(INITIAL_SECTIONS)
   const [customEdits, setCustomEdits] = useState<Partial<Record<SuggestionType, string>>>({})
+  const [applyStatus, setApplyStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const [applyMessage, setApplyMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (analysisStep !== 'analyzing') {
+  const baseHeaders = useMemo(createBaseHeaders, [])
+  const jsonHeaders = useMemo(() => createJsonHeaders(baseHeaders), [baseHeaders])
+
+  const persistProjectSuggestions = useCallback(async (updates: ProjectSuggestionPayload) => {
+    const targetId = selectedProjectId ?? projectIdInput.trim()
+    if (!targetId) {
+      setApplyStatus('error')
+      setApplyMessage('Select a project before applying suggestions.')
+      return false
+    }
+
+    const sanitizedEntries = (Object.entries(updates) as Array<[keyof ProjectSuggestionPayload, string | undefined]>)
+      .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : ''] as const)
+      .filter(([, value]) => value.length > 0)
+
+    const sanitizedPayload = sanitizedEntries.reduce<ProjectSuggestionPayload>((acc, [key, value]) => {
+      acc[key] = value
+      return acc
+    }, {})
+
+    if (sanitizedEntries.length === 0) {
+      setApplyStatus('error')
+      setApplyMessage('No AI suggestions available to apply.')
+      return false
+    }
+
+    setApplyStatus('saving')
+    setApplyMessage('Applying suggestions...')
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/analysis/projects/${targetId}/analysis/apply`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          suggestions: sanitizedPayload,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response, 'Unable to apply suggestions.'))
+      }
+
+      try {
+        await response.json()
+      } catch {
+        // Ignore empty bodies
+      }
+
+      setApplyStatus('success')
+      setApplyMessage('Suggestions applied to project.')
+      setActiveProject(previous => (
+        previous
+          ? {
+              ...previous,
+              name: sanitizedPayload.title ?? previous.name,
+              category: sanitizedPayload.category ?? previous.category,
+              description: sanitizedPayload.description ?? previous.description,
+            }
+          : previous
+      ))
+
+      return true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to apply suggestions.'
+      setApplyStatus('error')
+      setApplyMessage(message)
+      return false
+    }
+  }, [jsonHeaders, projectIdInput, selectedProjectId, setActiveProject, setApplyMessage, setApplyStatus])
+
+  const fetchAnalysisStatus = useCallback(async (projectId: string): Promise<AnalysisStatusResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/analysis/projects/${projectId}/analysis`, {
+      headers: baseHeaders,
+    })
+
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, 'Unable to load analysis status.'))
+    }
+
+    return response.json() as Promise<AnalysisStatusResponse>
+  }, [baseHeaders])
+
+  const fetchAnalysisResult = useCallback(async (projectId: string): Promise<AIAnalysis> => {
+    const response = await fetch(`${API_BASE_URL}/api/analysis/projects/${projectId}/analysis/results`, {
+      headers: baseHeaders,
+    })
+
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, 'Unable to load analysis results.'))
+    }
+
+    const payload = await response.json() as AnalysisResultResponse
+    return transformResult(payload)
+  }, [baseHeaders])
+
+  const initialiseFromStatus = useCallback(async (projectId: string) => {
+    try {
+      const status = await fetchAnalysisStatus(projectId)
+      const files = mapStatusFiles(status.fileAnalyses)
+
+      setActiveProject(status.project)
+      setAnalysisSummary(status.analysis)
+      setAnalysisFiles(files)
+      setQueuedFiles(status.project.fileCount)
+      setAnalysisProgress(computeProgress(files, status.analysis.status, status.project.fileCount))
+
+      if (status.analysis.status === 'completed') {
+        const result = await fetchAnalysisResult(projectId)
+        setAnalysisResult(result)
+        setAnalysisStep('complete')
+      } else if (status.analysis.status === 'failed') {
+        setAnalysisStep('failed')
+      } else if (status.analysis.status === 'analyzing') {
+        setAnalysisStep('analyzing')
+        setIsPolling(true)
+      } else {
+        setAnalysisStep('idle')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load analysis details.'
+      setAnalysisError(message)
+    }
+  }, [fetchAnalysisResult, fetchAnalysisStatus])
+
+  const startAnalysis = useCallback(async (projectId?: string) => {
+    const targetId = (projectId ?? projectIdInput).trim()
+    if (!targetId) {
+      setAnalysisError('Enter a project ID to analyze.')
       return
     }
 
-    const timer = window.setInterval(() => {
-      setAnalysisProgress(previous => {
-        const nextValue = Math.min(previous + Math.random() * 12 + 6, 100)
-        if (nextValue >= 100) {
-          setAnalysisStep('complete')
-        }
-        return nextValue
-      })
-    }, 240)
+    setAnalysisError(null)
+    setApplyStatus('idle')
+    setApplyMessage(null)
+    setIsSubmitting(true)
 
-    return () => window.clearInterval(timer)
-  }, [analysisRunId, analysisStep])
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/analysis/projects/${targetId}/analyze`, {
+        method: 'POST',
+        headers: jsonHeaders,
+      })
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response, 'Unable to start analysis.'))
+      }
+
+      const payload = await response.json() as { filesQueued?: number }
+
+      setSelectedProjectId(targetId)
+      setSearchParams({ projectId: targetId })
+      setQueuedFiles(payload.filesQueued ?? 0)
+      setAnalysisResult(null)
+      setAnalysisSummary({
+        status: 'analyzing',
+        confidence: null,
+        processingTime: null,
+        filesAnalyzed: 0,
+        insightsFound: 0,
+        suggestedTitle: null,
+        suggestedCategory: null,
+        suggestedTags: [],
+        updatedAt: null,
+        startedAt: new Date().toISOString(),
+      })
+      setAnalysisFiles([])
+      setAnalysisStep('analyzing')
+      setAnalysisProgress(0)
+      setCustomEdits({})
+      setExpandedSections(INITIAL_SECTIONS)
+      setIsPolling(true)
+
+      try {
+        await initialiseFromStatus(targetId)
+      } catch {
+        // Already handled within initialiseFromStatus
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start analysis.'
+      setAnalysisError(message)
+      setAnalysisStep('failed')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [initialiseFromStatus, jsonHeaders, projectIdInput, setSearchParams])
+
+  const projectIdParam = searchParams.get('projectId')
+
+  useEffect(() => {
+    if (!projectIdParam) {
+      setSelectedProjectId(null)
+      setActiveProject(null)
+      setAnalysisSummary(null)
+      setAnalysisFiles([])
+      setAnalysisResult(null)
+      setAnalysisStep('idle')
+      setAnalysisProgress(0)
+      setAnalysisError(null)
+      setApplyStatus('idle')
+      setApplyMessage(null)
+      return
+    }
+
+    setProjectIdInput(projectIdParam)
+    setSelectedProjectId(projectIdParam)
+    setAnalysisError(null)
+    initialiseFromStatus(projectIdParam)
+  }, [initialiseFromStatus, projectIdParam])
+  useEffect(() => {
+    if (!isPolling || !selectedProjectId) {
+      return
+    }
+
+    let active = true
+
+    const poll = async () => {
+      try {
+        const status = await fetchAnalysisStatus(selectedProjectId)
+        if (!active) {
+          return
+        }
+
+        const files = mapStatusFiles(status.fileAnalyses)
+        setActiveProject(status.project)
+        setAnalysisSummary(status.analysis)
+        setAnalysisFiles(files)
+        setQueuedFiles(status.project.fileCount)
+        setAnalysisProgress(computeProgress(files, status.analysis.status, status.project.fileCount))
+
+        if (status.analysis.status === 'completed') {
+          const result = await fetchAnalysisResult(selectedProjectId)
+          if (!active) {
+            return
+          }
+          setAnalysisResult(result)
+          setAnalysisStep('complete')
+          setIsPolling(false)
+        } else if (status.analysis.status === 'failed') {
+          setAnalysisStep('failed')
+          setIsPolling(false)
+          setAnalysisError('Analysis failed. Please try again.')
+        } else {
+          setAnalysisStep('analyzing')
+        }
+      } catch (error) {
+        if (!active) {
+          return
+        }
+        const message = error instanceof Error ? error.message : 'Unable to update analysis status.'
+        setAnalysisError(message)
+      }
+    }
+
+    poll()
+    const interval = window.setInterval(poll, 5000)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [fetchAnalysisResult, fetchAnalysisStatus, isPolling, selectedProjectId])
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    startAnalysis()
+  }
+
+  const handleToggleSection = (section: AnalysisSectionKey) => {
+    setExpandedSections(previous => ({
+      ...previous,
+      [section]: !previous[section],
+    }))
+  }
+
+  const handleApplySuggestion = async (type: SuggestionType, content: string) => {
+    if (!analysisResult || applyStatus === 'saving') {
+      return
+    }
+
+    const trimmedContent = content.trim()
+    if (!trimmedContent) {
+      return
+    }
+
+    const nextEdits = {
+      ...customEdits,
+      [type]: trimmedContent,
+    }
+
+    setCustomEdits(nextEdits)
+
+    const description = buildProjectDescription(analysisResult, nextEdits)
+    if (description) {
+      await persistProjectSuggestions({ description })
+    }
+  }
+
+  const handleApplyAllSuggestions = async () => {
+    if (!analysisResult || applyStatus === 'saving') {
+      return
+    }
+
+    const mergedEdits: Partial<Record<SuggestionType, string>> = {
+      problem: analysisResult.problem.primary,
+      solution: analysisResult.solution.primary,
+      impact: analysisResult.impact.primary,
+      narrative: analysisResult.narrative.story,
+    }
+
+    setCustomEdits(mergedEdits)
+    setExpandedSections({
+      problem: true,
+      solution: true,
+      impact: true,
+      narrative: true,
+    })
+
+    const description = buildProjectDescription(analysisResult, mergedEdits)
+    const payload: ProjectSuggestionPayload = {
+      title: analysisResult.suggestedTitle,
+      category: analysisResult.suggestedCategory,
+      description,
+    }
+
+    await persistProjectSuggestions(payload)
+  }
+
+  const handleReanalyze = () => {
+    const targetId = selectedProjectId ?? projectIdInput.trim()
+    if (!targetId) {
+      setAnalysisError('Enter a project ID to analyze.')
+      return
+    }
+    startAnalysis(targetId)
+  }
+
+  const sidebarFiles = useMemo(() => analysisFiles.map(file => ({
+    id: file.id,
+    name: file.name,
+    type: determineFileType(file.mimeType),
+    status: file.status,
+    insights: file.insights.map(describeInsight),
+  })), [analysisFiles])
 
   const progressLabel = useMemo(() => {
+    if (analysisStep === 'failed') {
+      return 'Analysis failed'
+    }
+    if (analysisStep === 'idle') {
+      return 'Waiting to start analysis'
+    }
+    if (analysisStep === 'complete') {
+      return 'Analysis complete!'
+    }
     if (analysisProgress < 25) {
       return 'Scanning uploaded files...'
     }
@@ -315,47 +862,28 @@ export default function PortfolioForgeAIAnalysis() {
       return 'Generating narrative...'
     }
     return 'Analysis complete!'
-  }, [analysisProgress])
+  }, [analysisProgress, analysisStep])
 
-  const handleToggleSection = (section: AnalysisSectionKey) => {
-    setExpandedSections(previous => ({
-      ...previous,
-      [section]: !previous[section],
-    }))
-  }
+  const confidenceDisplay = analysisResult
+    ? Math.round(analysisResult.confidence)
+    : Math.round(analysisSummary?.confidence ?? 0)
 
-  const handleApplySuggestion = (type: SuggestionType, content: string) => {
-    setCustomEdits(previous => ({
-      ...previous,
-      [type]: content,
-    }))
-  }
+  const insightsDisplay = analysisResult?.insights ?? analysisSummary?.insightsFound ?? 0
 
-  const handleApplyAllSuggestions = () => {
-    setCustomEdits({
-      problem: AI_ANALYSIS.problem.primary,
-      solution: AI_ANALYSIS.solution.primary,
-      impact: AI_ANALYSIS.impact.primary,
-      narrative: AI_ANALYSIS.narrative.story,
-    })
-    setExpandedSections({
-      problem: true,
-      solution: true,
-      impact: true,
-      narrative: true,
-    })
-  }
+  const processingTimeDisplay = analysisResult
+    ? analysisResult.processingTime
+    : formatProcessingTime(analysisSummary?.processingTime)
 
-  const handleReanalyze = () => {
-    setCustomEdits({})
-    setExpandedSections(INITIAL_SECTIONS)
-    setAnalysisProgress(0)
-    setAnalysisStep('analyzing')
-    setAnalysisRunId(previous => previous + 1)
-  }
+  const filesAnalyzedDisplay = analysisResult?.filesAnalyzed
+    ?? analysisSummary?.filesAnalyzed
+    ?? Math.max(analysisFiles.length, queuedFiles)
 
-  const appliedCount = Object.keys(customEdits).length
+  const summaryTitle = analysisResult?.suggestedTitle ?? analysisSummary?.suggestedTitle ?? '—'
+  const summaryCategory = analysisResult?.suggestedCategory ?? analysisSummary?.suggestedCategory ?? '—'
+  const summaryTags = analysisResult?.tags ?? analysisSummary?.suggestedTags ?? []
 
+  const appliedCount = Object.values(customEdits).filter(value => typeof value === 'string' && value.trim().length > 0).length
+  const isApplying = applyStatus === 'saving'
   return (
     <div className={`analysis-page${isDarkMode ? ' analysis-page--dark' : ''}`}>
       <header className="analysis-page__header">
@@ -367,7 +895,9 @@ export default function PortfolioForgeAIAnalysis() {
             <div>
               <h1 className="analysis-header__title">AI Project Analysis</h1>
               <p className="analysis-header__subtitle">
-                E-commerce Checkout Redesign • {PROJECT_FILES.length} files
+                {activeProject
+                  ? `${activeProject.name}${activeProject.category ? ` • ${activeProject.category}` : ''}${(analysisFiles.length || queuedFiles) ? ` • ${(analysisFiles.length || queuedFiles)} file${(analysisFiles.length || queuedFiles) === 1 ? '' : 's'}` : ''}`
+                  : 'Select a project and let AI surface your highlights'}
               </p>
             </div>
           </div>
@@ -381,18 +911,18 @@ export default function PortfolioForgeAIAnalysis() {
               {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
               <span>{isDarkMode ? 'Light mode' : 'Dark mode'}</span>
             </button>
-            <button type="button" className="button button--ghost" onClick={handleReanalyze}>
+            <button type="button" className="button button--ghost" onClick={handleReanalyze} disabled={isSubmitting}>
               <RefreshCw size={16} />
               Re-analyze
             </button>
             <button
               type="button"
               className="button button--primary"
-              onClick={handleApplyAllSuggestions}
-              disabled={analysisStep !== 'complete'}
+              onClick={() => { void handleApplyAllSuggestions() }}
+              disabled={analysisStep !== 'complete' || !analysisResult || isApplying}
             >
               <Sparkles size={16} />
-              Apply all suggestions
+              {isApplying ? 'Applying…' : 'Apply all suggestions'}
             </button>
           </div>
         </div>
@@ -400,51 +930,119 @@ export default function PortfolioForgeAIAnalysis() {
 
       <div className="analysis-page__layout">
         <aside className="analysis-sidebar analysis-panel">
+          <div className="analysis-sidebar__control">
+            <form onSubmit={handleSubmit} className="analysis-launcher">
+              <label htmlFor="analysis-project-id">Project ID</label>
+              <div className="analysis-launcher__row">
+                <input
+                  id="analysis-project-id"
+                  type="text"
+                  value={projectIdInput}
+                  onChange={event => setProjectIdInput(event.target.value)}
+                  placeholder="proj_12345"
+                />
+                <button type="submit" className="button button--primary button--small" disabled={isSubmitting}>
+                  {isSubmitting ? 'Starting…' : 'Analyze'}
+                </button>
+              </div>
+            </form>
+            {analysisError ? (
+              <p className="analysis-feedback analysis-feedback--error">{analysisError}</p>
+            ) : null}
+            {applyMessage ? (
+              <p
+                className={`analysis-feedback${applyStatus === 'error'
+                  ? ' analysis-feedback--error'
+                  : applyStatus === 'success'
+                    ? ' analysis-feedback--success'
+                    : ''}`}
+              >
+                {applyMessage}
+              </p>
+            ) : null}
+            {analysisStep === 'analyzing' && !analysisError ? (
+              <p className="analysis-feedback">Analysis in progress…</p>
+            ) : null}
+          </div>
+
           <div>
             <h2 className="analysis-sidebar__title">File analysis</h2>
           </div>
           <div className="analysis-sidebar__stats">
             <div className="analysis-sidebar__stat">
-              <strong>{AI_ANALYSIS.confidence}%</strong>
+              <strong>{confidenceDisplay}%</strong>
               <span>Confidence</span>
             </div>
             <div className="analysis-sidebar__stat">
-              <strong>{AI_ANALYSIS.insights}</strong>
+              <strong>{insightsDisplay}</strong>
               <span>Insights</span>
             </div>
           </div>
           <div className="analysis-sidebar__meta">
-            <p>Processed in {AI_ANALYSIS.processingTime}</p>
-            <p>{AI_ANALYSIS.filesAnalyzed} files analyzed</p>
+            <p>Processed in {processingTimeDisplay}</p>
+            <p>{filesAnalyzedDisplay} files analyzed</p>
           </div>
           <div className="analysis-sidebar__files">
-            {PROJECT_FILES.map(file => {
-              const FileIcon = FILE_ICONS[file.type]
+            {sidebarFiles.length > 0 ? sidebarFiles.map(file => {
+              const FileIconComponent = FILE_ICONS[file.type]
 
               return (
                 <div key={file.id} className="analysis-file-card">
                   <div className="analysis-file-card__icon">
-                    <FileIcon size={18} />
+                    <FileIconComponent size={18} />
                   </div>
                   <div className="analysis-file-card__details">
                     <div className="analysis-file-card__name">{file.name}</div>
+                    <div className="analysis-file-card__meta">
+                      <span className={`analysis-file-card__status analysis-file-card__status--${file.status}`}>
+                        {STATUS_LABELS[file.status]}
+                      </span>
+                    </div>
                     <div className="analysis-file-card__insights">
-                      {file.insights.map(insight => (
+                      {file.insights.length > 0 ? file.insights.map(insight => (
                         <span key={insight} className="analysis-file-card__insight">
                           <span className="analysis-file-card__bullet" />
                           {insight}
                         </span>
-                      ))}
+                      )) : (
+                        <span className="analysis-file-card__insight analysis-file-card__insight--empty">
+                          <span className="analysis-file-card__bullet" />
+                          No insights yet
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               )
-            })}
+            }) : (
+              <p className="analysis-sidebar__empty">No files queued for analysis yet.</p>
+            )}
           </div>
         </aside>
-
         <main className="analysis-main">
-          {analysisStep === 'analyzing' ? (
+          {analysisStep === 'idle' ? (
+            <section className="analysis-empty analysis-panel">
+              <div className="analysis-empty__icon">
+                <Sparkles size={28} />
+              </div>
+              <h2>Run AI analysis</h2>
+              <p>Enter a project ID to generate a narrative, impact summary, and ready-to-use highlights.</p>
+            </section>
+          ) : analysisStep === 'failed' ? (
+            <section className="analysis-progress analysis-panel analysis-progress--error">
+              <div className="analysis-progress__icon analysis-progress__icon--error">
+                <AlertCircle size={32} />
+              </div>
+              <h2 className="analysis-progress__title">Analysis failed</h2>
+              <p className="analysis-progress__description">{analysisError ?? 'Something went wrong while running the analysis.'}</p>
+              <div className="analysis-progress__actions">
+                <button type="button" className="button button--primary" onClick={handleReanalyze}>
+                  <RefreshCw size={16} />
+                  Try again
+                </button>
+              </div>
+            </section>
+          ) : analysisStep === 'analyzing' ? (
             <section className="analysis-progress analysis-panel">
               <div className="analysis-progress__icon">
                 <Brain size={32} />
@@ -460,7 +1058,7 @@ export default function PortfolioForgeAIAnalysis() {
                 {Math.round(Math.min(analysisProgress, 100))}% • {progressLabel}
               </p>
             </section>
-          ) : (
+          ) : analysisResult ? (
             <div className="analysis-results">
               <section className="analysis-complete analysis-panel">
                 <div className="analysis-complete__icon">
@@ -468,7 +1066,7 @@ export default function PortfolioForgeAIAnalysis() {
                 </div>
                 <div>
                   <h2>Analysis complete!</h2>
-                  <p>We&apos;ve reverse-engineered your project and surfaced the highlights worth showcasing.</p>
+                  <p>We've reverse-engineered your project and surfaced the highlights worth showcasing.</p>
                 </div>
               </section>
 
@@ -479,25 +1077,25 @@ export default function PortfolioForgeAIAnalysis() {
                 <div className="analysis-summary__grid">
                   <div>
                     <p className="analysis-summary__label">Title</p>
-                    <p className="analysis-summary__value">{AI_ANALYSIS.suggestedTitle}</p>
+                    <p className="analysis-summary__value">{summaryTitle || '—'}</p>
                   </div>
                   <div>
                     <p className="analysis-summary__label">Category</p>
-                    <p className="analysis-summary__value">{AI_ANALYSIS.suggestedCategory}</p>
+                    <p className="analysis-summary__value">{summaryCategory || '—'}</p>
                   </div>
                   <div>
                     <p className="analysis-summary__label">Tags</p>
                     <div className="analysis-summary__tags">
-                      {AI_ANALYSIS.tags.map(tag => (
+                      {summaryTags.length > 0 ? summaryTags.map(tag => (
                         <span key={tag} className="analysis-tag">
                           {tag}
                         </span>
-                      ))}
+                      )) : <span className="analysis-tag analysis-tag--empty">No tags suggested</span>}
                     </div>
                   </div>
                 </div>
                 <div className="analysis-summary__footer">
-                  <span>Generated from {AI_ANALYSIS.insights} insights across your project files.</span>
+                  <span>Generated from {analysisResult.insights} insights across your project files.</span>
                   <span>
                     {appliedCount > 0
                       ? `${appliedCount} suggestion${appliedCount === 1 ? '' : 's'} applied`
@@ -508,89 +1106,91 @@ export default function PortfolioForgeAIAnalysis() {
 
               <AnalysisCard
                 title="Problem identified"
-                confidence={AI_ANALYSIS.problem.confidence}
+                confidence={analysisResult.problem.confidence}
                 isExpanded={expandedSections.problem}
                 onToggle={() => handleToggleSection('problem')}
                 icon={Target}
               >
                 <SuggestionCard
                   title="Primary problem"
-                  content={AI_ANALYSIS.problem.primary}
-                  onApply={() => handleApplySuggestion('problem', AI_ANALYSIS.problem.primary)}
-                  isApplied={customEdits.problem === AI_ANALYSIS.problem.primary}
+                  content={analysisResult.problem.primary}
+                  onApply={() => { void handleApplySuggestion('problem', analysisResult.problem.primary) }}
+                  isApplied={customEdits.problem === analysisResult.problem.primary}
+                  disabled={isApplying}
                 />
 
-                <div>
-                  <h4 className="analysis-section-title">Supporting evidence</h4>
-                  <div className="analysis-list">
-                    {AI_ANALYSIS.problem.evidence.map(evidence => (
-                      <div key={evidence} className="analysis-list__item">
-                        <CheckCircle size={18} className="analysis-list__icon" />
-                        <span>{evidence}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="analysis-section-title">Alternative interpretations</h4>
-                  <div className="analysis-alternatives">
-                    {AI_ANALYSIS.problem.alternatives.map(alternative => {
-                      const isActive = customEdits.problem === alternative
-                      return (
-                        <div
-                          key={alternative}
-                          className={`analysis-alternative${isActive ? ' analysis-alternative--active' : ''}`}
-                        >
-                          <span>{alternative}</span>
-                          <button
-                            type="button"
-                            className="analysis-alternative__button"
-                            onClick={() => handleApplySuggestion('problem', alternative)}
-                          >
-                            Use this
-                          </button>
+                <div className="analysis-two-column">
+                  <div>
+                    <h4 className="analysis-section-title">Supporting evidence</h4>
+                    <div className="analysis-list">
+                      {analysisResult.problem.evidence.length > 0 ? analysisResult.problem.evidence.map(evidence => (
+                        <div key={evidence} className="analysis-list__item">
+                          <CheckCircle size={18} className="analysis-list__icon" />
+                          <span>{evidence}</span>
                         </div>
-                      )
-                    })}
+                      )) : <p>No supporting evidence provided.</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="analysis-section-title">Alternative interpretations</h4>
+                    <div className="analysis-alternatives">
+                      {analysisResult.problem.alternatives.length > 0 ? analysisResult.problem.alternatives.map(alternative => {
+                        const isActive = customEdits.problem === alternative
+                        return (
+                          <button
+                            key={alternative}
+                            type="button"
+                            className={`analysis-alternative${isActive ? ' analysis-alternative--active' : ''}`}
+                            onClick={() => { void handleApplySuggestion('problem', alternative) }}
+                            disabled={isApplying}
+                          >
+                            <span className="analysis-alternative__icon">
+                              <Lightbulb size={14} />
+                            </span>
+                            <span>{alternative}</span>
+                          </button>
+                        )
+                      }) : <p>No alternative interpretations suggested.</p>}
+                    </div>
                   </div>
                 </div>
               </AnalysisCard>
 
               <AnalysisCard
-                title="Solution approach"
-                confidence={AI_ANALYSIS.solution.confidence}
+                title="Solution proposed"
+                confidence={analysisResult.solution.confidence}
                 isExpanded={expandedSections.solution}
                 onToggle={() => handleToggleSection('solution')}
                 icon={Lightbulb}
               >
                 <SuggestionCard
                   title="Primary solution"
-                  content={AI_ANALYSIS.solution.primary}
-                  onApply={() => handleApplySuggestion('solution', AI_ANALYSIS.solution.primary)}
-                  isApplied={customEdits.solution === AI_ANALYSIS.solution.primary}
+                  content={analysisResult.solution.primary}
+                  onApply={() => { void handleApplySuggestion('solution', analysisResult.solution.primary) }}
+                  isApplied={customEdits.solution === analysisResult.solution.primary}
+                  disabled={isApplying}
                 />
 
                 <div className="analysis-two-column">
                   <div>
                     <h4 className="analysis-section-title">Key elements</h4>
                     <div className="analysis-list">
-                      {AI_ANALYSIS.solution.keyElements.map(element => (
+                      {analysisResult.solution.keyElements.length > 0 ? analysisResult.solution.keyElements.map(element => (
                         <div key={element} className="analysis-list__item">
                           <ArrowRight size={16} className="analysis-list__icon analysis-list__icon--accent" />
                           <span>{element}</span>
                         </div>
-                      ))}
+                      )) : <p>No key elements identified.</p>}
                     </div>
                   </div>
                   <div>
                     <h4 className="analysis-section-title">Design patterns</h4>
                     <div className="analysis-chips">
-                      {AI_ANALYSIS.solution.designPatterns.map(pattern => (
+                      {analysisResult.solution.designPatterns.length > 0 ? analysisResult.solution.designPatterns.map(pattern => (
                         <span key={pattern} className="analysis-chip">
                           {pattern}
                         </span>
-                      ))}
+                      )) : <span className="analysis-chip analysis-chip--empty">No design patterns noted.</span>}
                     </div>
                   </div>
                 </div>
@@ -598,73 +1198,75 @@ export default function PortfolioForgeAIAnalysis() {
 
               <AnalysisCard
                 title="Impact &amp; results"
-                confidence={AI_ANALYSIS.impact.confidence}
+                confidence={analysisResult.impact.confidence}
                 isExpanded={expandedSections.impact}
                 onToggle={() => handleToggleSection('impact')}
                 icon={TrendingUp}
               >
                 <SuggestionCard
                   title="Primary impact"
-                  content={AI_ANALYSIS.impact.primary}
-                  onApply={() => handleApplySuggestion('impact', AI_ANALYSIS.impact.primary)}
-                  isApplied={customEdits.impact === AI_ANALYSIS.impact.primary}
+                  content={analysisResult.impact.primary}
+                  onApply={() => { void handleApplySuggestion('impact', analysisResult.impact.primary) }}
+                  isApplied={customEdits.impact === analysisResult.impact.primary}
+                  disabled={isApplying}
                 />
 
                 <div>
                   <h4 className="analysis-section-title">Key metrics</h4>
                   <div className="analysis-metrics">
-                    {AI_ANALYSIS.impact.metrics.map(metric => (
+                    {analysisResult.impact.metrics.length > 0 ? analysisResult.impact.metrics.map(metric => (
                       <div key={metric.metric} className="analysis-metric-card">
                         <strong>{metric.metric}</strong>
                         <span>Before: {metric.before}</span>
                         <span>After: {metric.after}</span>
                         <div className="analysis-metric-card__change">{metric.change}</div>
                       </div>
-                    ))}
+                    )) : <p>No metrics identified.</p>}
                   </div>
                 </div>
 
                 <div className="analysis-business-value">
                   <TrendingUp size={18} />
-                  <span>{AI_ANALYSIS.impact.businessValue}</span>
+                  <span>{analysisResult.impact.businessValue || 'No business value summary provided.'}</span>
                 </div>
               </AnalysisCard>
 
               <AnalysisCard
                 title="Generated story"
-                confidence={91}
+                confidence={analysisResult.narrative.story ? 91 : 0}
                 isExpanded={expandedSections.narrative}
                 onToggle={() => handleToggleSection('narrative')}
                 icon={MessageSquare}
               >
                 <SuggestionCard
                   title="Project story"
-                  content={AI_ANALYSIS.narrative.story}
-                  onApply={() => handleApplySuggestion('narrative', AI_ANALYSIS.narrative.story)}
-                  isApplied={customEdits.narrative === AI_ANALYSIS.narrative.story}
+                  content={analysisResult.narrative.story || 'No narrative generated.'}
+                  onApply={() => { void handleApplySuggestion('narrative', analysisResult.narrative.story) }}
+                  isApplied={customEdits.narrative === analysisResult.narrative.story}
+                  disabled={isApplying}
                 />
 
                 <div className="analysis-two-column">
                   <div>
                     <h4 className="analysis-section-title">Key challenges</h4>
                     <div className="analysis-list">
-                      {AI_ANALYSIS.narrative.challenges.map(challenge => (
+                      {analysisResult.narrative.challenges.length > 0 ? analysisResult.narrative.challenges.map(challenge => (
                         <div key={challenge} className="analysis-list__item">
                           <AlertCircle size={18} className="analysis-list__icon analysis-list__icon--warning" />
                           <span>{challenge}</span>
                         </div>
-                      ))}
+                      )) : <p>No challenges highlighted.</p>}
                     </div>
                   </div>
                   <div>
                     <h4 className="analysis-section-title">Process steps</h4>
                     <div className="analysis-process">
-                      {AI_ANALYSIS.narrative.process.map((step, index) => (
+                      {analysisResult.narrative.process.length > 0 ? analysisResult.narrative.process.map((step, index) => (
                         <div key={step} className="analysis-process__step">
                           <span className="analysis-process__index">{index + 1}</span>
                           <span>{step}</span>
                         </div>
-                      ))}
+                      )) : <p>No process steps documented.</p>}
                     </div>
                   </div>
                 </div>
@@ -678,15 +1280,15 @@ export default function PortfolioForgeAIAnalysis() {
                 <button
                   type="button"
                   className="button button--primary"
-                  onClick={handleApplyAllSuggestions}
-                  disabled={analysisStep !== 'complete'}
+                  onClick={() => { void handleApplyAllSuggestions() }}
+                  disabled={analysisStep !== 'complete' || !analysisResult || isApplying}
                 >
                   <Sparkles size={16} />
-                  Apply all suggestions
+                  {isApplying ? 'Applying…' : 'Apply all suggestions'}
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </main>
       </div>
     </div>

@@ -3,6 +3,164 @@ import { PrismaClient } from '@prisma/client';
 import { analysisQueue } from '../jobs/analysisQueue';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 
+const ensureStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(item => {
+      if (typeof item === 'string') {
+        return item.trim();
+      }
+      if (typeof item === 'number' || typeof item === 'boolean') {
+        return String(item);
+      }
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>;
+        if (typeof record.content === 'string') {
+          return record.content.trim();
+        }
+        if (typeof record.value === 'string') {
+          return record.value.trim();
+        }
+        try {
+          return JSON.stringify(record);
+        } catch {
+          return '';
+        }
+      }
+      return '';
+    })
+    .filter((entry): entry is string => entry.length > 0);
+};
+
+const ensureEvidenceArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(item => {
+      if (typeof item === 'string') {
+        return item.trim();
+      }
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>;
+        const type = typeof record.type === 'string' ? record.type.toUpperCase() : null;
+        const content = typeof record.content === 'string'
+          ? record.content.trim()
+          : record.content != null
+            ? JSON.stringify(record.content)
+            : '';
+        if (!content) {
+          return '';
+        }
+        const confidence = typeof record.confidence === 'number'
+          ? ` (confidence ${(record.confidence * 100).toFixed(0)}%)`
+          : '';
+        return type ? `[${type}] ${content}${confidence}` : `${content}${confidence}`;
+      }
+      try {
+        return JSON.stringify(item);
+      } catch {
+        return '';
+      }
+    })
+    .filter((entry): entry is string => entry.length > 0);
+};
+
+type MetricRecord = { metric: string; before: string; after: string; change: string };
+
+const ensureMetricArray = (value: unknown): MetricRecord[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(item => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const record = item as Record<string, unknown>;
+      const metric = typeof record.metric === 'string' ? record.metric : '';
+      const before = typeof record.before === 'string' ? record.before : '';
+      const after = typeof record.after === 'string' ? record.after : '';
+      const change = typeof record.change === 'string' ? record.change : '';
+
+      if (!metric && !before && !after && !change) {
+        return null;
+      }
+
+      return { metric, before, after, change };
+    })
+    .filter((entry): entry is MetricRecord => Boolean(entry));
+};
+
+type SerializedInsight = {
+  content: string;
+  type?: string;
+  confidence?: number;
+  source?: string;
+};
+
+const normalizeInsights = (value: unknown): SerializedInsight[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item): SerializedInsight | null => {
+      if (typeof item === 'string') {
+        return { content: item };
+      }
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>;
+        const contentRaw = record.content;
+        const content = typeof contentRaw === 'string'
+          ? contentRaw
+          : contentRaw != null
+            ? (() => {
+              try {
+                return JSON.stringify(contentRaw);
+              } catch {
+                return String(contentRaw);
+              }
+            })()
+            : '';
+
+        if (!content.trim()) {
+          return null;
+        }
+
+        const type = typeof record.type === 'string' ? record.type : undefined;
+        const confidenceValue = record.confidence;
+        const confidence = typeof confidenceValue === 'number'
+          ? confidenceValue
+          : typeof confidenceValue === 'string'
+            ? Number(confidenceValue)
+            : undefined;
+        const source = typeof record.source === 'string' ? record.source : undefined;
+
+        return {
+          content: content.trim(),
+          type,
+          confidence: Number.isFinite(confidence) ? confidence : undefined,
+          source,
+        };
+      }
+      if (item == null) {
+        return null;
+      }
+      try {
+        return { content: JSON.stringify(item) };
+      } catch {
+        return { content: String(item) };
+      }
+    })
+    .filter((entry): entry is SerializedInsight => entry !== null);
+};
+
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -60,6 +218,13 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
       where: {
         id: projectId,
         userId: userId
+      },
+      include: {
+        files: {
+          include: {
+            analysis: true
+          }
+        }
       }
     });
 
@@ -68,30 +233,59 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
       return;
     }
 
-    const analysis = await prisma.projectAnalysis.findUnique({
+    const analysisRecord = await prisma.projectAnalysis.findUnique({
       where: { projectId }
     });
 
-    if (!analysis) {
-      res.status(404).json({ error: 'No analysis found' });
-      return;
-    }
+    const fileAnalyses = project.files.map(file => ({
+      id: file.id,
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.size,
+      status: file.analysis?.status ?? 'pending',
+      insights: normalizeInsights(file.analysis?.insights ?? []),
+      extractedText: typeof file.analysis?.extractedText === 'string' ? file.analysis.extractedText : null,
+      metadata: file.analysis?.metadata ?? null,
+      updatedAt: file.analysis?.updatedAt ?? file.updatedAt,
+    }));
 
-    const fileAnalyses = await prisma.fileAnalysis.findMany({
-      where: {
-        file: {
-          projectId: projectId
+    const analysisPayload = analysisRecord
+      ? {
+          status: analysisRecord.status,
+          confidence: analysisRecord.confidence ?? null,
+          processingTime: analysisRecord.processingTime ?? null,
+          filesAnalyzed: analysisRecord.filesAnalyzed,
+          insightsFound: analysisRecord.insightsFound,
+          suggestedTitle: analysisRecord.suggestedTitle ?? null,
+          suggestedCategory: analysisRecord.suggestedCategory ?? null,
+          suggestedTags: ensureStringArray(analysisRecord.suggestedTags ?? []),
+          updatedAt: analysisRecord.updatedAt,
+          startedAt: analysisRecord.createdAt,
         }
-      },
-      select: {
-        status: true,
-        fileId: true
-      }
-    });
+      : {
+          status: 'pending',
+          confidence: null,
+          processingTime: null,
+          filesAnalyzed: 0,
+          insightsFound: 0,
+          suggestedTitle: null,
+          suggestedCategory: null,
+          suggestedTags: [] as string[],
+          updatedAt: null,
+          startedAt: null,
+        };
 
     res.json({
-      ...analysis,
-      fileAnalyses
+      project: {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        category: project.category,
+        fileCount: project.files.length,
+        updatedAt: project.updatedAt,
+      },
+      analysis: analysisPayload,
+      fileAnalyses,
     });
 
   } catch (error) {
@@ -127,36 +321,36 @@ router.get('/projects/:projectId/analysis/results', requireAuth, async (req: Aut
     }
 
     const result = {
-      confidence: analysis.confidence,
-      processingTime: analysis.processingTime,
+      confidence: analysis.confidence ?? null,
+      processingTime: analysis.processingTime ?? null,
       filesAnalyzed: analysis.filesAnalyzed,
       insights: analysis.insightsFound,
       problem: {
-        primary: analysis.primaryProblem,
-        confidence: analysis.problemConfidence,
-        evidence: analysis.problemEvidence,
-        alternatives: analysis.problemAlternatives
+        primary: analysis.primaryProblem ?? '',
+        confidence: analysis.problemConfidence ?? null,
+        evidence: ensureEvidenceArray(analysis.problemEvidence),
+        alternatives: ensureStringArray(analysis.problemAlternatives),
       },
       solution: {
-        primary: analysis.primarySolution,
-        confidence: analysis.solutionConfidence,
-        keyElements: analysis.solutionElements,
-        designPatterns: analysis.designPatterns
+        primary: analysis.primarySolution ?? '',
+        confidence: analysis.solutionConfidence ?? null,
+        keyElements: ensureStringArray(analysis.solutionElements),
+        designPatterns: ensureStringArray(analysis.designPatterns),
       },
       impact: {
-        primary: analysis.primaryImpact,
-        confidence: analysis.impactConfidence,
-        metrics: analysis.metrics,
-        businessValue: analysis.businessValue
+        primary: analysis.primaryImpact ?? '',
+        confidence: analysis.impactConfidence ?? null,
+        metrics: ensureMetricArray(analysis.metrics),
+        businessValue: analysis.businessValue ?? '',
       },
       narrative: {
-        story: analysis.story,
-        challenges: analysis.challenges,
-        process: analysis.process
+        story: analysis.story ?? '',
+        challenges: ensureStringArray(analysis.challenges),
+        process: ensureStringArray(analysis.process),
       },
-      suggestedTitle: analysis.suggestedTitle,
-      suggestedCategory: analysis.suggestedCategory,
-      tags: analysis.suggestedTags
+      suggestedTitle: analysis.suggestedTitle ?? '',
+      suggestedCategory: analysis.suggestedCategory ?? '',
+      tags: ensureStringArray(analysis.suggestedTags),
     };
 
     res.json(result);
