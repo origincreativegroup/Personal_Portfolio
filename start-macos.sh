@@ -25,8 +25,15 @@ SPARKLES="✨"
 # Resolve project paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
-FRONTEND_DIR="$PROJECT_ROOT"
-# Use the main project root for frontend (not the portfolio-intake subdirectory)
+
+if [ -f "$PROJECT_ROOT/apps/web/package.json" ]; then
+    FRONTEND_DIR="$PROJECT_ROOT/apps/web"
+elif [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
+    FRONTEND_DIR="$PROJECT_ROOT/portfolio-intake"
+else
+    FRONTEND_DIR="$PROJECT_ROOT"
+fi
+
 FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
 
 cd "$PROJECT_ROOT"

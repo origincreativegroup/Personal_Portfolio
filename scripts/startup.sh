@@ -2,9 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FRONTEND_DIR="$ROOT_DIR"
-if [[ -f "$ROOT_DIR/portfolio-intake/package.json" ]]; then
+if [[ -f "$ROOT_DIR/apps/web/package.json" ]]; then
+  FRONTEND_DIR="$ROOT_DIR/apps/web"
+elif [[ -f "$ROOT_DIR/portfolio-intake/package.json" ]]; then
   FRONTEND_DIR="$ROOT_DIR/portfolio-intake"
+else
+  FRONTEND_DIR="$ROOT_DIR"
 fi
 FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
 FRONTEND_ONLY=0
