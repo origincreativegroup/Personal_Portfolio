@@ -1,11 +1,8 @@
 import { component$ } from '@builder.io/qwik';
 import { routeLoader$, type DocumentHead } from '@builder.io/qwik-city';
-import { qwikify$ } from '@builder.io/qwik-react';
 import { getProject, listTemplates, recommendTemplates } from '../../../../lib/api.js';
 import type { ProjectT, TemplateT } from '@portfolioforge/schemas';
 import { ProjectEditor } from '../../../../components/editor/ProjectEditor.js';
-
-const ProjectEditorIsland = qwikify$(ProjectEditor, { eagerness: 'load' });
 
 export const useProject = routeLoader$(async ({ params }) => {
   const project = await getProject(params.id);
@@ -25,7 +22,7 @@ export default component$(() => {
 
   return (
     <div class="grid gap-6">
-      <ProjectEditorIsland project={project.value} templates={templates.value} />
+      <ProjectEditor project={project.value} templates={templates.value} />
     </div>
   );
 });

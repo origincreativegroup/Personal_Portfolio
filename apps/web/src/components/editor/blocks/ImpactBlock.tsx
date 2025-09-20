@@ -1,26 +1,26 @@
+import { component$ } from '@builder.io/qwik';
 import type { ImpactBlockT } from '@portfolioforge/schemas';
-import type { FC } from 'react';
 
-export const ImpactBlockPreview: FC<{ block: ImpactBlockT }> = ({ block }) => {
+export const ImpactBlockPreview = component$<{ block: ImpactBlockT }>(({ block }) => {
   return (
-    <div className="rounded-xl border border-[#cbc0ff] px-4 py-3 text-sm text-[#1a1a1a]">
-      <h3 className="uppercase text-xs tracking-wide text-[#5a3cf4]">Impact</h3>
-      <p className="mt-1 text-sm text-[#333333]">
-        <strong className="font-semibold text-[#1a1a1a]">Problem:</strong> {block.problem}
+    <div class="grid gap-2 text-sm text-[#1a1a1a]">
+      <span class="text-xs uppercase text-[#5a3cf4]">impact</span>
+      <p>
+        <strong>problem:</strong> {block.problem}
       </p>
-      <p className="mt-1 text-sm text-[#333333]">
-        <strong className="font-semibold text-[#1a1a1a]">Solution:</strong> {block.solution}
+      <p>
+        <strong>solution:</strong> {block.solution}
       </p>
-      <ul className="mt-2 grid gap-1 text-xs text-[#333333]">
+      <ul class="list-disc pl-4 text-xs text-[#333333]">
         {block.outcomes.map((outcome, index) => (
-          <li key={`${outcome}-${index}`}>• {outcome}</li>
+          <li key={`${outcome}-${index}`}>{outcome}</li>
         ))}
       </ul>
       {block.metrics && (
-        <dl className="mt-2 grid grid-cols-2 gap-1 text-xs text-[#1a1a1a]">
+        <dl class="grid grid-cols-2 gap-2 text-xs text-[#333333]">
           {Object.entries(block.metrics).map(([name, value]) => (
-            <div key={name} className="flex items-center justify-between rounded-md bg-[#cbc0ff] px-2 py-1">
-              <dt className="lowercase">{name}</dt>
+            <div key={name} class="rounded-md bg-[#cbc0ff] px-2 py-1">
+              <dt class="lowercase">{name}</dt>
               <dd>{value}</dd>
             </div>
           ))}
@@ -28,4 +28,4 @@ export const ImpactBlockPreview: FC<{ block: ImpactBlockT }> = ({ block }) => {
       )}
     </div>
   );
-};
+});

@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { $, component$, useComputed$, useSignal } from '@builder.io/qwik';
 import type { AnyBlockT, NarrativeDraftT, ProjectT, TemplateT } from '@portfolioforge/schemas';
 import { BlockToolbar } from './BlockToolbar.js';
-import { EditorCanvas, type EditorCanvasHandle } from './EditorCanvas.js';
+import { EditorCanvas } from './EditorCanvas.js';
 import { PreviewPane } from './PreviewPane.js';
 import { AIHelperPanel } from './AIHelperPanel.js';
 import { ExportMenu } from './ExportMenu.js';
@@ -12,112 +12,136 @@ export type ProjectEditorProps = {
   templates: TemplateT[];
 };
 
-export const ProjectEditor = ({ project, templates }: ProjectEditorProps) => {
-  const [blocks, setBlocks] = useState<AnyBlockT[]>([...project.blocks].sort((a, b) => a.order - b.order));
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(blocks[0]?.id ?? null);
-  const [breakpoint, setBreakpoint] = useState<'sm' | 'md' | 'lg'>('lg');
-  const [currentProject, setCurrentProject] = useState<ProjectT>(project);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(templates[0]?.id);
-  const [narrative, setNarrative] = useState<NarrativeDraftT | null>(null);
-  const [saving, setSaving] = useState(false);
-  const editorRef = useRef<EditorCanvasHandle | null>(null);
+export const ProjectEditor = component$<ProjectEditorProps>(({ project, templates }) => {
+  const blocks = useSignal<AnyBlockT[]>([...project.blocks].sort((a, b) => a.order - b.order));
+  const selectedBlockId = useSignal<string | null>(blocks.value[0]?.id ?? null);
+  const breakpoint = useSignal<'sm' | 'md' | 'lg'>('lg');
+  const currentProject = useSignal<ProjectT>(project);
+  const selectedTemplateId = useSignal<string | undefined>(templates[0]?.id);
+  const narrative = useSignal<NarrativeDraftT | null>(null);
+  const saving = useSignal(false);
 
-  const selectedTemplate = useMemo(() => templates.find((template) => template.id === selectedTemplateId), [
-    selectedTemplateId,
-    templates,
-  ]);
+  const selectedTemplate = useComputed$(() =>
+    templates.find((template) => template.id === selectedTemplateId.value)
+  );
 
-  const handleBlocksChange = (updated: AnyBlockT[]) => {
-    setBlocks(updated);
-  };
+  const handleBlocksChange = $((updated: AnyBlockT[]) => {
+    blocks.value = updated.map((block, index) => ({ ...block, order: index }));
+  });
 
-  const handleAddBlock = (type: AnyBlockT['type']) => {
-    const block = createDefaultBlock(type, blocks.length);
-    setBlocks((prev) => [...prev, block]);
-    setSelectedBlockId(block.id);
-  };
+  const handleAddBlock = $((type: AnyBlockT['type']) => {
+    const block = createDefaultBlock(type, blocks.value.length);
+    blocks.value = [...blocks.value, block];
+    selectedBlockId.value = block.id;
+  });
 
-  const handleDuplicateBlock = (blockId: string) => {
-    const block = blocks.find((item) => item.id === blockId);
+  const handleDuplicateBlock = $((blockId: string) => {
+    const block = blocks.value.find((item) => item.id === blockId);
     if (!block) return;
-    const clone = { ...block, id: createId(), order: blocks.length } as AnyBlockT;
-    setBlocks((prev) => [...prev, clone]);
-  };
+    const clone = { ...block, id: createId(), order: blocks.value.length } as AnyBlockT;
+    blocks.value = [...blocks.value, clone];
+  });
 
-  const handleDeleteBlock = (blockId: string) => {
-    setBlocks((prev) => prev.filter((block) => block.id !== blockId).map((block, index) => ({ ...block, order: index })));
-    setSelectedBlockId(null);
-  };
+  const handleDeleteBlock = $((blockId: string) => {
+    blocks.value = blocks.value
+      .filter((block) => block.id !== blockId)
+      .map((block, index) => ({ ...block, order: index }));
+    if (selectedBlockId.value === blockId) {
+      selectedBlockId.value = null;
+    }
+  });
 
-  const handleUpdateBlock = (updated: AnyBlockT) => {
-    setBlocks((prev) => prev.map((block) => (block.id === updated.id ? updated : block)));
-  };
+  const handleUpdateBlock = $((updated: AnyBlockT) => {
+    blocks.value = blocks.value.map((block) => (block.id === updated.id ? updated : block));
+  });
 
-  const handleSaveBlocks = async () => {
+  const handleSaveBlocks = $(async () => {
     try {
-      setSaving(true);
-      const saved = await saveBlocks(currentProject.id, blocks.map((block, index) => ({ ...block, order: index })));
-      setBlocks(saved);
-      setCurrentProject((prev) => ({ ...prev, blocks: saved }));
+      saving.value = true;
+      const saved = await saveBlocks(
+        currentProject.value.id,
+        blocks.value.map((block, index) => ({ ...block, order: index }))
+      );
+      blocks.value = [...saved].sort((a, b) => a.order - b.order);
+      currentProject.value = { ...currentProject.value, blocks: saved };
       alert('blocks saved');
     } catch (error) {
       alert(error instanceof Error ? error.message : 'unable to save blocks');
     } finally {
-      setSaving(false);
+      saving.value = false;
     }
-  };
+  });
 
-  const handleDraft = async (draft: NarrativeDraftT) => {
-    setNarrative(draft);
-    const updated = await updateProject(currentProject.id, { summary: draft.executiveSummary });
-    setCurrentProject(updated);
-  };
+  const handleDraft = $(async (draft: NarrativeDraftT) => {
+    narrative.value = draft;
+    const updated = await updateProject(currentProject.value.id, {
+      summary: draft.executiveSummary,
+    });
+    currentProject.value = updated;
+  });
 
-  const handleRewrite = (content: string) => {
-    const selected = blocks.find((block) => block.id === selectedBlockId && block.type === 'text');
+  const handleRewrite = $((content: string) => {
+    const selected = blocks.value.find(
+      (block) => block.id === selectedBlockId.value && block.type === 'text'
+    );
     if (!selected || selected.type !== 'text') return;
-    handleUpdateBlock({ ...selected, content });
-  };
+    const updated = { ...selected, content } as AnyBlockT;
+    blocks.value = blocks.value.map((block) => (block.id === updated.id ? updated : block));
+  });
+
+  const handleBreakpointChange = $((value: 'sm' | 'md' | 'lg') => {
+    breakpoint.value = value;
+  });
+
+  const handleSelectBlock = $((id: string | null) => {
+    selectedBlockId.value = id;
+  });
+
+  const handleTemplateChange = $((value: string) => {
+    selectedTemplateId.value = value || undefined;
+  });
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_320px]">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_320px]">
       <BlockToolbar
-        blocks={blocks}
-        selectedBlockId={selectedBlockId}
-        onAddBlock={handleAddBlock}
-        onDeleteBlock={handleDeleteBlock}
-        onDuplicateBlock={handleDuplicateBlock}
-        onUpdateBlock={handleUpdateBlock}
+        blocks={blocks.value}
+        selectedBlockId={selectedBlockId.value}
+        onAddBlock$={handleAddBlock}
+        onDeleteBlock$={handleDeleteBlock}
+        onDuplicateBlock$={handleDuplicateBlock}
+        onUpdateBlock$={handleUpdateBlock}
       />
-      <section className="grid gap-4">
-        <div className="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium lowercase text-[#1a1a1a]">Editor canvas</h2>
+      <section class="grid gap-4">
+        <div class="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-medium lowercase text-[#1a1a1a]">Editor canvas</h2>
             <button
-              className="rounded-full bg-[#5a3cf4] px-4 py-2 text-xs text-white"
-              onClick={handleSaveBlocks}
-              disabled={saving}
+              class="rounded-full bg-[#5a3cf4] px-4 py-2 text-xs text-white disabled:opacity-60"
+              onClick$={handleSaveBlocks}
+              disabled={saving.value}
+              type="button"
             >
-              {saving ? 'saving…' : 'Save blocks'}
+              {saving.value ? 'saving…' : 'Save blocks'}
             </button>
           </div>
-          <div className="h-[560px] rounded-2xl border border-dashed border-[#cbc0ff]">
+          <div class="h-[560px] rounded-2xl border border-dashed border-[#cbc0ff]">
             <EditorCanvas
-              ref={(instance) => (editorRef.current = instance)}
-              blocks={blocks}
-              onBlocksChange={handleBlocksChange}
-              onSelectBlock={setSelectedBlockId}
-              selectedBlockId={selectedBlockId}
+              blocks={blocks.value}
+              onBlocksChange$={handleBlocksChange}
+              onSelectBlock$={handleSelectBlock}
+              selectedBlockId={selectedBlockId.value}
             />
           </div>
         </div>
-        <div className="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4">
-          <label className="flex items-center gap-2 text-xs uppercase text-[#333333]">
+        <div class="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4">
+          <label class="flex items-center gap-2 text-xs uppercase text-[#333333]">
             template
             <select
-              value={selectedTemplateId}
-              onChange={(event) => setSelectedTemplateId(event.target.value)}
-              className="rounded-md border border-[#cbc0ff] px-2 py-1 text-sm"
+              value={selectedTemplateId.value ?? ''}
+              onChange$={(event) =>
+                handleTemplateChange((event.target as HTMLSelectElement).value)
+              }
+              class="rounded-md border border-[#cbc0ff] px-2 py-1 text-sm"
             >
               {templates.map((template) => (
                 <option key={template.id} value={template.id}>
@@ -127,30 +151,30 @@ export const ProjectEditor = ({ project, templates }: ProjectEditorProps) => {
             </select>
           </label>
           <PreviewPane
-            title={currentProject.title}
-            summary={currentProject.summary}
-            blocks={blocks}
-            template={selectedTemplate}
-            breakpoint={breakpoint}
-            onBreakpointChange={setBreakpoint}
+            title={currentProject.value.title}
+            summary={currentProject.value.summary}
+            blocks={blocks.value}
+            template={selectedTemplate.value}
+            breakpoint={breakpoint.value}
+            onBreakpointChange$={handleBreakpointChange}
           />
         </div>
-        {narrative && (
-          <section className="grid gap-2 rounded-2xl border border-[#cbc0ff] px-4 py-4 text-sm text-[#1a1a1a]">
-            <h3 className="text-sm font-medium lowercase text-[#1a1a1a]">Executive summary draft</h3>
-            <p className="text-sm text-[#333333]">{narrative.executiveSummary}</p>
+        {narrative.value && (
+          <section class="grid gap-2 rounded-2xl border border-[#cbc0ff] px-4 py-4 text-sm text-[#1a1a1a]">
+            <h3 class="text-sm font-medium lowercase text-[#1a1a1a]">Executive summary draft</h3>
+            <p class="text-sm text-[#333333]">{narrative.value.executiveSummary}</p>
             <div>
-              <h4 className="text-xs uppercase text-[#5a3cf4]">highlights</h4>
-              <ul className="list-disc pl-4 text-xs text-[#333333]">
-                {narrative.highlights.map((item) => (
+              <h4 class="text-xs uppercase text-[#5a3cf4]">highlights</h4>
+              <ul class="list-disc pl-4 text-xs text-[#333333]">
+                {narrative.value.highlights.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
             <div>
-              <h4 className="text-xs uppercase text-[#5a3cf4]">recommendations</h4>
-              <ul className="list-disc pl-4 text-xs text-[#333333]">
-                {narrative.recommendations.map((item) => (
+              <h4 class="text-xs uppercase text-[#5a3cf4]">recommendations</h4>
+              <ul class="list-disc pl-4 text-xs text-[#333333]">
+                {narrative.value.recommendations.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -158,13 +182,17 @@ export const ProjectEditor = ({ project, templates }: ProjectEditorProps) => {
           </section>
         )}
       </section>
-      <section className="grid gap-4">
-        <AIHelperPanel projectId={currentProject.id} onDraft={handleDraft} onRewrite={handleRewrite} />
-        <ExportMenu project={currentProject} template={selectedTemplate} />
+      <section class="grid gap-4">
+        <AIHelperPanel
+          projectId={currentProject.value.id}
+          onDraft$={handleDraft}
+          onRewrite$={handleRewrite}
+        />
+        <ExportMenu project={currentProject.value} template={selectedTemplate.value} />
       </section>
     </div>
   );
-};
+});
 
 const createDefaultBlock = (type: AnyBlockT['type'], order: number): AnyBlockT => {
   switch (type) {
