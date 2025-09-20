@@ -26,9 +26,7 @@ SPARKLES="✨"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 FRONTEND_DIR="$PROJECT_ROOT"
-if [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
-    FRONTEND_DIR="$PROJECT_ROOT/portfolio-intake"
-fi
+# Use the main project root for frontend (not the portfolio-intake subdirectory)
 FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
 
 cd "$PROJECT_ROOT"
