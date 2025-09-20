@@ -38,6 +38,10 @@ const normaliseLayout = (value: unknown): ProjectLayoutBlock[] | undefined => {
   return blocks.length > 0 ? blocks : []
 }
 
+const normaliseString = (value: unknown): string => {
+  return typeof value === 'string' ? value : ''
+}
+
 const normaliseStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
@@ -48,12 +52,42 @@ const normaliseStringArray = (value: unknown): string[] => {
 
   if (typeof value === 'string') {
     return value
-      .split(/[;,]+/)
+      .split(/[;,\n]+/)
       .map(item => item.trim())
       .filter(item => item.length > 0)
   }
 
   return []
+}
+
+const normaliseCaseStudyContent = (value: unknown) => {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const content = value as Record<string, unknown>
+  const approach = normaliseStringArray(content.approach)
+  const results = normaliseStringArray(content.results)
+
+  if (
+    approach.length === 0 &&
+    results.length === 0 &&
+    !content.overview &&
+    !content.challenge &&
+    !content.learnings &&
+    !content.callToAction
+  ) {
+    return undefined
+  }
+
+  return {
+    overview: normaliseString(content.overview),
+    challenge: normaliseString(content.challenge),
+    approach,
+    results,
+    learnings: normaliseString(content.learnings),
+    callToAction: typeof content.callToAction === 'string' ? content.callToAction : undefined,
+  }
 }
 
 const readStore = (): Store => {
@@ -102,6 +136,7 @@ const readStore = (): Store => {
       aiGeneratedSummary: typeof meta.aiGeneratedSummary === 'string' ? meta.aiGeneratedSummary : undefined,
       caseStudyHtml: typeof meta.caseStudyHtml === 'string' ? meta.caseStudyHtml : undefined,
       caseStudyCss: typeof meta.caseStudyCss === 'string' ? meta.caseStudyCss : undefined,
+      caseStudyContent: normaliseCaseStudyContent(meta.caseStudyContent),
     }
   })
 
@@ -170,6 +205,7 @@ export function saveProject(meta: ProjectMeta) {
       : undefined,
     assets: Array.isArray(meta.assets) ? meta.assets : [],
     layout: Array.isArray(meta.layout) ? meta.layout : undefined,
+    caseStudyContent: meta.caseStudyContent,
   }
   writeStore(store)
 }

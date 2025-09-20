@@ -22,7 +22,10 @@ const PortfolioPage: React.FC = () => {
         const loadedProjects = await listProjects()
         setProjects(loadedProjects)
         const saved = loadPortfolioDocument()
-        if (saved) {
+        if (saved?.settings) {
+          const regenerated = buildPortfolioTemplate(loadedProjects, saved.settings)
+          setDocument({ html: regenerated.html, css: regenerated.css })
+        } else if (saved) {
           setDocument({ html: saved.html, css: saved.css })
         } else {
           const generated = buildPortfolioTemplate(loadedProjects)

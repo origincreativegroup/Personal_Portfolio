@@ -10,6 +10,15 @@ export type ProjectAsset = {
   thumbnailUrl?: string | null
 }
 
+export type CaseStudyContent = {
+  overview: string
+  challenge: string
+  approach: string[]
+  results: string[]
+  learnings: string
+  callToAction?: string
+}
+
 export type ProjectBlockWidth = 'full' | 'two-thirds' | 'half' | 'third'
 export type ProjectBlockAlignment = 'left' | 'center' | 'right'
 export type ProjectBlockPadding = 'none' | 'small' | 'medium' | 'large'
@@ -144,6 +153,7 @@ export type ProjectMeta = {
   layout?: ProjectLayoutBlock[]
   caseStudyHtml?: string
   caseStudyCss?: string
+  caseStudyContent?: CaseStudyContent
 
   // AI Integration
   autoGenerateNarrative?: boolean
@@ -191,5 +201,13 @@ export const newProject = (title: string): ProjectMeta => ({
   updatedAt: new Date().toISOString(),
   assets: [],
   layout: [],
-  autoGenerateNarrative: false
+  autoGenerateNarrative: false,
+  caseStudyContent: {
+    overview: '',
+    challenge: '',
+    approach: [],
+    results: [],
+    learnings: '',
+    callToAction: undefined,
+  },
 })
