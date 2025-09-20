@@ -21,13 +21,18 @@ type ProjectWithFiles = {
 };
 
 export class AIAnalysisService {
-  private openai: OpenAI;
+  private openai: OpenAI | null;
   private prisma: PrismaClient;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Only initialize OpenAI if API key is available
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      this.openai = new OpenAI({ apiKey });
+    } else {
+      console.warn('OpenAI API key not found. AI analysis will be disabled.');
+      this.openai = null;
+    }
     this.prisma = new PrismaClient();
   }
 
@@ -165,6 +170,32 @@ export class AIAnalysisService {
   }
 
   private async generateAIAnalysis(data: ReturnType<typeof AIAnalysisService.prototype.compileAnalysisData>): Promise<any> {
+    // If OpenAI is not available, return a mock analysis
+    if (!this.openai) {
+      console.warn('OpenAI not available, returning mock analysis');
+      return {
+        confidence: 50,
+        problem: {
+          primary: "Analysis unavailable - OpenAI API key not configured",
+          confidence: 0,
+          evidence: ["OpenAI API integration not configured"],
+          alternatives: ["Configure OpenAI API key to enable AI analysis"]
+        },
+        solution: {
+          primary: "Basic project structure analysis available",
+          confidence: 50,
+          keyElements: ["File organization", "Project metadata"],
+          designPatterns: ["Standard portfolio layout"]
+        },
+        impact: {
+          primary: "Limited analysis available without AI integration",
+          confidence: 50,
+          metrics: [{"metric": "files", "before": "0", "after": data.project.files.length.toString(), "change": "100%"}],
+          businessValue: "Basic project organization and structure"
+        }
+      };
+    }
+
     const prompt = this.buildAnalysisPrompt(data);
 
     const completion = await this.openai.chat.completions.create({

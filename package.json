@@ -15,7 +15,7 @@
     "build:all": "npm run build:backend && npm run build",
     "install:all": "npm install && cd server && npm install",
     "clean": "rm -rf node_modules dist server/node_modules server/dist",
-    "setup": "npm run install:all && npm run build:backend"
+    "setup": "npm run install:all && cd server && npx prisma generate && npx prisma db push --accept-data-loss && cd .. && npm run build:backend"
   },
   "dependencies": {
     "lucide-react": "^0.453.0",

@@ -135,23 +135,56 @@ install_dependencies() {
     fi
 }
 
+# Function to setup Prisma database
+setup_prisma() {
+    if [ -f "server/prisma/schema.prisma" ]; then
+        print_step "Setting up Prisma database..."
+        cd server
+
+        # Generate Prisma client if needed
+        if [ ! -d "node_modules/@prisma/client" ] || [ ! -f "node_modules/@prisma/client/index.js" ]; then
+            print_info "Generating Prisma client..."
+            npx prisma generate --silent
+        fi
+
+        # Push database schema if database doesn't exist
+        if [ ! -f "prisma/dev.db" ]; then
+            print_info "Creating database..."
+            npx prisma db push --accept-data-loss --silent
+        fi
+
+        cd ..
+        print_success "Prisma database ready"
+    fi
+}
+
 # Function to build backend
 build_backend() {
     if [ ! -f "server/dist/app.js" ]; then
         print_step "Building backend..."
         cd server
+
+        # Check if TypeScript source files exist
+        if [ ! -f "src/app.ts" ]; then
+            print_warning "Backend source files not found, skipping build"
+            cd ..
+            return 0
+        fi
+
         npm run build --silent
         if [ $? -eq 0 ]; then
             print_success "Backend built successfully"
         else
             print_error "Failed to build backend"
+            print_info "Will try to start in development mode instead"
             cd ..
-            exit 1
+            return 1
         fi
         cd ..
     else
         print_success "Backend already built"
     fi
+    return 0
 }
 
 # Function to start backend with macOS-specific features
@@ -162,26 +195,34 @@ start_backend() {
 
     cd server
 
-    # Use macOS-specific background process handling
+    # Check if we have built files or source files
     if [ -f "dist/app.js" ]; then
+        print_info "Starting built backend..."
         npm start > ../logs/backend.log 2>&1 &
         BACKEND_PID=$!
-        print_success "Backend started (PID: $BACKEND_PID)"
-    else
+        print_success "Backend started in production mode (PID: $BACKEND_PID)"
+    elif [ -f "src/app.ts" ]; then
+        print_info "Starting backend in development mode..."
         npm run dev > ../logs/backend.log 2>&1 &
         BACKEND_PID=$!
         print_success "Backend started in dev mode (PID: $BACKEND_PID)"
+    else
+        print_warning "No backend found to start"
+        cd ..
+        return 1
     fi
 
     cd ..
 
     # Wait and verify
-    sleep 3
+    sleep 5
     if check_port 3001; then
         print_success "Backend is running at http://localhost:3001"
     else
         print_warning "Backend may not have started properly. Check logs/backend.log"
+        print_info "You can view backend logs with: tail -f logs/backend.log"
     fi
+    return 0
 }
 
 # Function to start frontend
@@ -358,6 +399,9 @@ main() {
 
     # Install dependencies
     install_dependencies
+
+    # Setup Prisma database
+    setup_prisma
 
     # Build backend
     build_backend
