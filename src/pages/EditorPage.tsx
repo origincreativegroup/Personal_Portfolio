@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import ProjectFileExplorer from '../components/ProjectFileExplorer'
 import ProjectAssetEditor from '../components/projectdash'
+import EnhancedAssetManager from '../components/EnhancedAssetManager'
 import ProjectEditor from '../components/ProjectEditor'
 import { loadProject, saveProject, deleteProject } from '../utils/storageManager'
 import type {
@@ -598,36 +599,29 @@ export default function EditorPage() {
         </section>
 
         <section className="editor-page__card editor-page__card--assets">
-          <div className="editor-page__card-header">
-            <div>
-              <h2>Project assets</h2>
-              <p className="editor-page__card-subtitle">Drop in supporting files, briefs, or exports.</p>
-            </div>
-            <button type="button" className="button button--primary button--small" onClick={() => assetInputRef.current?.click()}>
-              Upload files
-            </button>
-            <input
-              ref={assetInputRef}
-              type="file"
-              className="editor-page__file-input"
-              multiple
-              onChange={event => handleAssetUpload(event.target.files)}
-            />
-          </div>
-
-          <p className="editor-page__card-helper">{assetLimitCopy}</p>
-
           {assetFeedback && (
             <div className={`editor-feedback editor-feedback--${assetFeedback.type}`}>
               {assetFeedback.message}
             </div>
           )}
 
-          <ProjectAssetEditor
+          <EnhancedAssetManager
             assets={project.assets}
+            heroAssetId={project.cover}
             onAssetUpdate={handleAssetUpdate}
             onAssetRemove={handleAssetRemove}
             onAssetReorder={handleAssetReorder}
+            onHeroSelect={(assetId) => handleProjectUpdate({ cover: assetId })}
+            onAssetUpload={handleAssetUpload}
+            isDarkMode={false}
+          />
+
+          <input
+            ref={assetInputRef}
+            type="file"
+            className="editor-page__file-input"
+            multiple
+            onChange={event => handleAssetUpload(event.target.files)}
           />
         </section>
 
