@@ -227,7 +227,11 @@ router.put('/:workspaceId/projects/:projectId', requireWorkspaceMembership, asyn
 
     res.status(409).json({
       error: 'Version conflict',
-      latest,
+      latest: {
+        project: latest,
+        version: latest?.version ?? 0,
+        latestRevision: latest?.revisions?.[0] ?? null,
+      },
     });
     return;
   }
