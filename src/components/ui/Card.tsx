@@ -24,11 +24,7 @@ interface CardFooterProps {
   className?: string;
 }
 
-const Card: React.FC<CardProps> & {
-  Header: React.FC<CardHeaderProps>;
-  Body: React.FC<CardBodyProps>;
-  Footer: React.FC<CardFooterProps>;
-} = ({
+const CardComponent: React.FC<CardProps> = ({
   children,
   className = '',
   padding = 'md',
@@ -110,8 +106,14 @@ const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => 
   );
 };
 
+const Card = React.memo(CardComponent) as React.MemoExoticComponent<React.FC<CardProps>> & {
+  Header: React.FC<CardHeaderProps>;
+  Body: React.FC<CardBodyProps>;
+  Footer: React.FC<CardFooterProps>;
+};
+
 Card.Header = React.memo(CardHeader);
 Card.Body = React.memo(CardBody);
 Card.Footer = React.memo(CardFooter);
 
-export default React.memo(Card);
+export default Card;
