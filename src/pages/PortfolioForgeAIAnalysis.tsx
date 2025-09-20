@@ -706,7 +706,7 @@ export default function PortfolioForgeAIAnalysis() {
     if (event.hints && event.hints.length > 0) {
       setOperatorHints(previous => {
         const combined = new Set(previous)
-        event.hints?.forEach(hint => combined.add(hint))
+        event.hints.forEach(hint => combined.add(hint))
         return Array.from(combined)
       })
     }
