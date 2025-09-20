@@ -23,6 +23,7 @@ const execFileAsync = promisify(execFile);
 
 const METADATA_FILES = ['02_Metadata.json', 'metadata.json'];
 const BRIEF_FILES = ['01_Narrative.md', 'brief.md'];
+const PRIMARY_BRIEF_FILE = BRIEF_FILES[0];
 
 const ASSET_DIRS = ['03_Assets', 'assets'];
 const DELIVERABLE_DIRS = ['06_Exports', 'deliverables'];
@@ -381,7 +382,7 @@ export class ProjectSyncService {
     const metadataBuffer = await fs.readFile(metadataPath);
 
     const briefInfo = await findFirstExistingFile(projectPath, BRIEF_FILES);
-    const briefPath = briefInfo?.path ?? path.join(projectPath, BRIEF_FILES[0]);
+    const briefPath = briefInfo?.path ?? path.join(projectPath, PRIMARY_BRIEF_FILE);
     const briefData = briefInfo ? await readOptionalText(briefInfo.path) : null;
 
     const assets = await mapAssets(projectPath);
@@ -590,6 +591,14 @@ export class ProjectSyncService {
     const metadataPath = metadataInfo?.path ?? path.join(projectPath, METADATA_FILES[0]);
     const legacyMetadataPath = path.join(projectPath, 'metadata.json');
     const normalizedLinks = normalizeLinks(metadata.links ?? []);
+    const normalizedPcsi = metadata.pcsi
+      ? {
+          problem: metadata.pcsi.problem ?? '',
+          challenge: metadata.pcsi.challenge ?? '',
+          solution: metadata.pcsi.solution ?? '',
+          impact: metadata.pcsi.impact ?? '',
+        }
+      : undefined;
 
     const payload = {
       schema_version: metadata.schemaVersion,
@@ -609,18 +618,11 @@ export class ProjectSyncService {
       privacy: { nda: metadata.nda ?? false },
       case: {
         problem: metadata.case?.problem ?? '',
-        challenge: metadata.case && 'challenge' in metadata.case ? (metadata.case as Record<string, unknown>).challenge ?? '' : '',
+        challenge: metadata.case?.challenge ?? '',
         actions: metadata.case?.actions ?? '',
         results: metadata.case?.results ?? '',
       },
-      pcsi: metadata.case
-        ? {
-            problem: metadata.case.problem ?? '',
-            challenge: (metadata.case as Record<string, unknown>).challenge ?? '',
-            solution: metadata.case.actions ?? '',
-            impact: metadata.case.results ?? '',
-          }
-        : undefined,
+      pcsi: normalizedPcsi,
       cover_image: metadata.coverImage ?? '',
     };
 
@@ -683,10 +685,10 @@ export class ProjectSyncService {
       throw error;
     }
 
-    const briefPath = path.join(this.projectRoot, project.folder, BRIEF_FILE);
+    const briefPath = path.join(this.projectRoot, project.folder, PRIMARY_BRIEF_FILE);
     await fs.writeFile(briefPath, content, 'utf-8');
     const stats = await fs.stat(briefPath);
-    const checksum = computeChecksum(content);
+    const checksum = computeChecksum(Buffer.from(content, 'utf-8'));
 
     const updated = await this.prisma.project.update({
       where: { id: projectId },
@@ -708,7 +710,7 @@ export class ProjectSyncService {
     if (!project) {
       throw new Error('Project not found');
     }
-    const briefPath = path.join(this.projectRoot, project.folder, BRIEF_FILE);
+    const briefPath = path.join(this.projectRoot, project.folder, PRIMARY_BRIEF_FILE);
     const brief = await readOptionalText(briefPath);
     return {
       content: brief?.content ?? null,

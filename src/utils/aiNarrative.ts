@@ -35,17 +35,22 @@ const ensureArray = (value: unknown): string[] => {
   return []
 }
 
-const coerceContent = (input: Partial<CaseStudyContent>, fallback: CaseStudyContent): CaseStudyContent => ({
-  overview: typeof input.overview === 'string' && input.overview.trim() ? input.overview.trim() : fallback.overview,
-  challenge: typeof input.challenge === 'string' && input.challenge.trim() ? input.challenge.trim() : fallback.challenge,
-  approach: ensureArray(input.approach) || fallback.approach,
-  results: ensureArray(input.results) || fallback.results,
-  learnings: typeof input.learnings === 'string' && input.learnings.trim() ? input.learnings.trim() : fallback.learnings,
-  callToAction:
-    typeof input.callToAction === 'string' && input.callToAction.trim()
-      ? input.callToAction.trim()
-      : fallback.callToAction,
-})
+const coerceContent = (input: Partial<CaseStudyContent>, fallback: CaseStudyContent): CaseStudyContent => {
+  const approach = ensureArray(input.approach)
+  const results = ensureArray(input.results)
+
+  return {
+    overview: typeof input.overview === 'string' && input.overview.trim() ? input.overview.trim() : fallback.overview,
+    challenge: typeof input.challenge === 'string' && input.challenge.trim() ? input.challenge.trim() : fallback.challenge,
+    approach: approach.length > 0 ? approach : fallback.approach,
+    results: results.length > 0 ? results : fallback.results,
+    learnings: typeof input.learnings === 'string' && input.learnings.trim() ? input.learnings.trim() : fallback.learnings,
+    callToAction:
+      typeof input.callToAction === 'string' && input.callToAction.trim()
+        ? input.callToAction.trim()
+        : fallback.callToAction,
+  }
+}
 
 export const generateCaseStudyNarrative = async (
   project: ProjectMeta,
