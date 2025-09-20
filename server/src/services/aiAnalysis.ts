@@ -190,7 +190,7 @@ export class AIAnalysisService {
         impact: {
           primary: "Limited analysis available without AI integration",
           confidence: 50,
-          metrics: [{"metric": "files", "before": "0", "after": data.project.files.length.toString(), "change": "100%"}],
+          metrics: [{"metric": "files", "before": "0", "after": data.fileCount.toString(), "change": "100%"}],
           businessValue: "Basic project organization and structure"
         }
       };

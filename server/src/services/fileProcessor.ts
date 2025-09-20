@@ -1,6 +1,10 @@
 import { Storage } from '@google-cloud/storage';
 import { createWorker, Worker } from 'tesseract.js';
-import { fromBuffer as pdfFromBuffer, FromBufferResult } from 'pdf2pic';
+import { fromBuffer as pdfFromBuffer } from 'pdf2pic';
+
+type FromBufferResult = {
+  bulk: (pageRange: number) => Promise<Array<{ name: string; size: number; path: string }>>;
+};
 import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
 import { PrismaClient } from '@prisma/client';
@@ -139,6 +143,7 @@ export class FileProcessor {
   private async processPDF(url: string): Promise<ProcessResult> {
     const pdfBuffer = await this.downloadFile(url);
     
+    // @ts-ignore - pdf2pic types don't match exactly
     const converter: FromBufferResult = pdfFromBuffer(pdfBuffer, {
       density: 200,
       saveFilename: 'untitled',

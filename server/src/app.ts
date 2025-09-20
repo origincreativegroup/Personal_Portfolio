@@ -7,6 +7,7 @@ import analysisRoutes from './routes/analysis';
 import projectRoutes from './routes/projects';
 import ProjectSyncService from './services/projectSyncService';
 import { registerProjectSyncScheduler } from './jobs/projectSyncScheduler';
+import './types/express'; // Import Express type extensions
 
 const app = express();
 const prisma = new PrismaClient();

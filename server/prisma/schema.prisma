@@ -13,28 +13,75 @@ datasource db {
 model Project {
   id          String   @id @default(cuid())
   name        String
+  title       String?
+  slug        String?
   description String?
+  summary     String?
+  workType    String?
+  category    String?
+  organization String?
+  year        Int?
+  tags        String?
+  highlights  String?
+  syncStatus  String?
+  lastSyncedAt DateTime?
+  fsLastModified DateTime?
+  metadataUpdatedAt DateTime?
+  briefUpdatedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   userId      String
 
   files     ProjectFile[]
   analyses  ProjectAnalysis[]
+  assets    ProjectAsset[]
+  deliverables ProjectDeliverable[]
 
   @@map("projects")
+}
+
+model ProjectAsset {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  path      String
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_assets")
+}
+
+model ProjectDeliverable {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  description String?
+  path      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_deliverables")
 }
 
 model ProjectFile {
   id        String   @id @default(cuid())
   projectId String
+  name      String
   filename  String
   filepath  String
-  mimetype  String
+  url       String?
+  mimeType  String
   size      Int
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  analyses  FileAnalysis[]
+  analysis  FileAnalysis?
 
   @@map("project_files")
 }
@@ -45,6 +92,28 @@ model ProjectAnalysis {
   status      String   // 'pending', 'processing', 'completed', 'failed'
   result      String?  // JSON string
   error       String?
+  confidence  Float?
+  processingTime Float?
+  filesAnalyzed Int?
+  insightsFound Int?
+  primaryProblem String?
+  problemConfidence Float?
+  problemEvidence String?
+  problemAlternatives String?
+  primarySolution String?
+  solutionConfidence Float?
+  solutionElements String?
+  designPatterns String?
+  primaryImpact String?
+  impactConfidence Float?
+  metrics String?
+  businessValue String?
+  story String?
+  challenges String?
+  process String?
+  suggestedTitle String?
+  suggestedCategory String?
+  suggestedTags String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -59,6 +128,11 @@ model FileAnalysis {
   status   String  // 'pending', 'processing', 'completed', 'failed'
   result   String? // JSON string
   error    String?
+  insights String?
+  extractedText String?
+  metadata String?
+  contentType String?
+  processingTime Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
