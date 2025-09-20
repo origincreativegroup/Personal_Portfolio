@@ -120,7 +120,7 @@ export class JobHistoryService {
         where: { id: execution.id },
         data: {
           metadata: {
-            ...(execution.metadata as Record<string, unknown> | null ?? {}),
+            ...((execution.metadata as Record<string, unknown> | null) ?? {}),
             lastProgress: details.progress,
           },
         },
