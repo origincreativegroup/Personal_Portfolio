@@ -1,34 +1,35 @@
-import { useState } from 'react';
-import { Button } from '@portfolioforge/ui';
-import { exportPdf, publishProject } from '../../lib/api.js';
+import { $, component$, useSignal } from '@builder.io/qwik';
 import type { ProjectT, TemplateT } from '@portfolioforge/schemas';
+import { exportPdf, publishProject } from '../../lib/api.js';
 
 export type ExportMenuProps = {
   project: ProjectT;
   template?: TemplateT;
 };
 
-export const ExportMenu = ({ project, template }: ExportMenuProps) => {
-  const [publishing, setPublishing] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [publishedUrl, setPublishedUrl] = useState(project.status === 'published' ? `https://portfolioforge.dev/projects/${project.id}` : '');
+export const ExportMenu = component$<ExportMenuProps>(({ project, template }) => {
+  const publishing = useSignal(false);
+  const exporting = useSignal(false);
+  const publishedUrl = useSignal(
+    project.status === 'published' ? `https://portfolioforge.dev/projects/${project.id}` : ''
+  );
 
-  const handlePublish = async () => {
+  const handlePublish = $(async () => {
     try {
-      setPublishing(true);
+      publishing.value = true;
       const result = await publishProject(project.id);
-      setPublishedUrl(result.url);
+      publishedUrl.value = result.url;
       alert(`Project published: ${result.url}`);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'unable to publish');
     } finally {
-      setPublishing(false);
+      publishing.value = false;
     }
-  };
+  });
 
-  const handleExport = async () => {
+  const handleExport = $(async () => {
     try {
-      setExporting(true);
+      exporting.value = true;
       const blob = await exportPdf(project.id, template?.id);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -41,26 +42,36 @@ export const ExportMenu = ({ project, template }: ExportMenuProps) => {
     } catch (error) {
       alert(error instanceof Error ? error.message : 'unable to export');
     } finally {
-      setExporting(false);
+      exporting.value = false;
     }
-  };
+  });
 
   return (
-    <section className="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4 text-sm text-[#1a1a1a]">
-      <h3 className="text-sm font-medium lowercase text-[#1a1a1a]">publish & export</h3>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handlePublish} disabled={publishing}>
+    <section class="grid gap-3 rounded-2xl border border-[#cbc0ff] px-4 py-4 text-sm text-[#1a1a1a]">
+      <h3 class="text-sm font-medium lowercase text-[#1a1a1a]">publish & export</h3>
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="rounded-full bg-[#5a3cf4] px-4 py-2 text-sm text-white disabled:opacity-60"
+          onClick$={handlePublish}
+          disabled={publishing.value}
+        >
           Publish Project
-        </Button>
-        <Button variant="ghost" onClick={handleExport} disabled={exporting}>
+        </button>
+        <button
+          type="button"
+          class="rounded-full border border-[#cbc0ff] px-4 py-2 text-sm lowercase text-[#1a1a1a] transition hover:bg-[#cbc0ff] disabled:opacity-60"
+          onClick$={handleExport}
+          disabled={exporting.value}
+        >
           Export PDF
-        </Button>
+        </button>
       </div>
-      {publishedUrl && (
-        <p className="text-xs lowercase text-[#5a3cf4]">
-          public url: <a href={publishedUrl}>{publishedUrl}</a>
+      {publishedUrl.value && (
+        <p class="text-xs lowercase text-[#5a3cf4]">
+          public url: <a href={publishedUrl.value}>{publishedUrl.value}</a>
         </p>
       )}
     </section>
   );
-};
+});

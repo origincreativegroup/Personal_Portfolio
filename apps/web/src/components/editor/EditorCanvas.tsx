@@ -1,107 +1,112 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { component$, useSignal, useTask$, useVisibleTask$ } from '@builder.io/qwik';
 import type { AnyBlockT } from '@portfolioforge/schemas';
+import type { QRL } from '@builder.io/qwik';
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 
-export type EditorCanvasHandle = {
-  getEditor: () => grapesjs.Editor | null;
-};
-
 type EditorCanvasProps = {
   blocks: AnyBlockT[];
-  onBlocksChange: (blocks: AnyBlockT[]) => void;
-  onSelectBlock: (id: string | null) => void;
+  onBlocksChange$: QRL<(blocks: AnyBlockT[]) => void>;
+  onSelectBlock$: QRL<(id: string | null) => void>;
   selectedBlockId: string | null;
 };
 
-export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
-  ({ blocks, onBlocksChange, onSelectBlock, selectedBlockId }, ref) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const editorRef = useRef<grapesjs.Editor | null>(null);
-    const blocksRef = useRef<AnyBlockT[]>(blocks);
+export const EditorCanvas = component$<EditorCanvasProps>(({ blocks, onBlocksChange$, onSelectBlock$, selectedBlockId }) => {
+  const containerRef = useSignal<HTMLDivElement>();
+  const editorSignal = useSignal<grapesjs.Editor>();
+  const blocksSignal = useSignal<AnyBlockT[]>(blocks);
 
-    useEffect(() => {
-      blocksRef.current = blocks;
-    }, [blocks]);
+  useTask$(({ track }) => {
+    track(() => blocks);
+    blocksSignal.value = blocks;
+  });
 
-    useEffect(() => {
-      if (!containerRef.current) return;
-      const editor = grapesjs.init({
-        container: containerRef.current,
-        height: '100%',
-        width: '100%',
-        fromElement: false,
-        storageManager: false,
-        blockManager: { appendTo: '#block-manager', blocks: [] },
-        selectorManager: { componentFirst: true },
-        deviceManager: { devices: [] },
-        layerManager: { appendTo: '#layer-manager' },
-        styleManager: { appendTo: '#style-manager' },
-        panels: { defaults: [] },
-      });
-      editorRef.current = editor;
+  useVisibleTask$(({ track, cleanup }) => {
+    const container = track(() => containerRef.value);
+    if (!container) return;
 
-      const updateOrder = () => {
-        const wrapper = editor.getWrapper();
-        const components = wrapper.components();
-        const newBlocks: AnyBlockT[] = [];
-        components.forEach((component, index) => {
-          const id = component.getAttributes()['data-block-id'];
-          const match = blocksRef.current.find((block) => block.id === id);
-          if (match) {
-            newBlocks.push({ ...match, order: index });
-          }
-        });
-        if (newBlocks.length === blocksRef.current.length) {
-          onBlocksChange(newBlocks);
-        }
-      };
+    const editor = grapesjs.init({
+      container,
+      height: '100%',
+      width: '100%',
+      fromElement: false,
+      storageManager: false,
+      blockManager: { appendTo: '#block-manager', blocks: [] },
+      selectorManager: { componentFirst: true },
+      deviceManager: { devices: [] },
+      layerManager: { appendTo: '#layer-manager' },
+      styleManager: { appendTo: '#style-manager' },
+      panels: { defaults: [] },
+    });
+    editorSignal.value = editor;
 
-      const handleSelect = (component: grapesjs.Component | null) => {
-        if (!component) {
-          onSelectBlock(null);
-          return;
-        }
+    const updateOrder = async () => {
+      const wrapper = editor.getWrapper();
+      const components = wrapper.components();
+      const currentBlocks = blocksSignal.value;
+      const newBlocks: AnyBlockT[] = [];
+      components.forEach((component, index) => {
         const id = component.getAttributes()['data-block-id'];
-        onSelectBlock(id ?? null);
-      };
+        const match = currentBlocks.find((block) => block.id === id);
+        if (match) {
+          newBlocks.push({ ...match, order: index });
+        }
+      });
+      if (newBlocks.length === currentBlocks.length) {
+        blocksSignal.value = newBlocks;
+        await onBlocksChange$(newBlocks);
+      }
+    };
 
-      editor.on('component:drag:end', updateOrder);
-      editor.on('component:remove', updateOrder);
-      editor.on('component:selected', handleSelect);
+    const handleSelect = async (component: grapesjs.Component | null) => {
+      if (!component) {
+        await onSelectBlock$(null);
+        return;
+      }
+      const id = component.getAttributes()['data-block-id'];
+      await onSelectBlock$(id ?? null);
+    };
 
-      syncEditor(editor, blocksRef.current);
+    editor.on('component:drag:end', () => {
+      void updateOrder();
+    });
+    editor.on('component:remove', () => {
+      void updateOrder();
+    });
+    editor.on('component:selected', (component) => {
+      void handleSelect(component);
+    });
 
-      return () => {
-        editor.destroy();
-        editorRef.current = null;
-      };
-    }, []);
+    syncEditor(editor, blocksSignal.value);
 
-    useEffect(() => {
-      const editor = editorRef.current;
-      if (!editor) return;
-      syncEditor(editor, blocks);
+    cleanup(() => {
+      editor.destroy();
+      editorSignal.value = undefined;
+    });
+  });
+
+  useVisibleTask$(({ track }) => {
+    const currentBlocks = track(() => blocksSignal.value);
+    const currentSelected = track(() => selectedBlockId);
+    const editor = editorSignal.value;
+    if (!editor) return;
+
+    syncEditor(editor, currentBlocks);
+
+    if (currentSelected) {
       const component = editor
         .getWrapper()
-        .find(`[data-block-id="${selectedBlockId}"]`)[0] as grapesjs.Component | undefined;
+        .find(`[data-block-id="${currentSelected}"]`)[0] as grapesjs.Component | undefined;
       if (component) {
         editor.select(component);
+        return;
       }
-    }, [blocks, selectedBlockId]);
+    }
+    editor.select(null);
+  });
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        getEditor: () => editorRef.current,
-      }),
-      []
-    );
-
-    return <div className="h-full w-full" ref={containerRef} />;
-  }
-);
-EditorCanvas.displayName = 'EditorCanvas';
+  return <div class="h-full w-full" ref={containerRef} />;
+});
 
 const syncEditor = (editor: grapesjs.Editor, blocks: AnyBlockT[]) => {
   const wrapper = editor.getWrapper();
@@ -165,4 +170,5 @@ const blockPreview = (block: AnyBlockT) => {
   }
 };
 
-const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

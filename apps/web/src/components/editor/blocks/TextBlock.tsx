@@ -1,12 +1,12 @@
+import { component$ } from '@builder.io/qwik';
 import type { TextBlockT } from '@portfolioforge/schemas';
-import type { FC } from 'react';
 
-export const TextBlockPreview: FC<{ block: TextBlockT }> = ({ block }) => {
+export const TextBlockPreview = component$<{ block: TextBlockT }>(({ block }) => {
   if (block.variant === 'heading') {
-    return <h3 className="text-xl font-semibold lowercase text-[#1a1a1a]">{block.content}</h3>;
+    return <h3 class="text-xl font-semibold lowercase text-[#1a1a1a]">{block.content}</h3>;
   }
   if (block.variant === 'quote') {
-    return <blockquote className="border-l-4 border-[#cbc0ff] pl-4 italic text-[#333333]">{block.content}</blockquote>;
+    return <blockquote class="border-l-4 border-[#cbc0ff] pl-4 italic text-[#333333]">{block.content}</blockquote>;
   }
-  return <p className="text-sm text-[#333333]">{block.content}</p>;
-};
+  return <p class="text-sm text-[#333333]">{block.content}</p>;
+});
