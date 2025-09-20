@@ -52,10 +52,11 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/projects', projectRoutes(upload));
 app.use('/api/intake', intakeRoutes(upload));
 
-registerProjectSyncScheduler({
-  service: projectSyncService,
-  intervalMs: Number(process.env.PROJECT_SYNC_INTERVAL_MS ?? 5 * 60 * 1000),
-});
+// Temporarily disable automatic sync until database is properly configured
+// registerProjectSyncScheduler({
+//   service: projectSyncService,
+//   intervalMs: Number(process.env.PROJECT_SYNC_INTERVAL_MS ?? 5 * 60 * 1000),
+// });
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
