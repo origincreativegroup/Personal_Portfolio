@@ -184,6 +184,14 @@ const NewEditorPage: React.FC = () => {
     }
     setIsGenerating(true)
     try {
+      const caseStudyForGeneration: CaseStudyContent = {
+        overview,
+        challenge: caseStudy.challenge,
+        approach: multilineToList(approachText),
+        results: multilineToList(resultsText),
+        learnings,
+        callToAction: cta || undefined,
+      }
       const snapshot: ProjectMeta = {
         ...project,
         summary,
@@ -192,16 +200,9 @@ const NewEditorPage: React.FC = () => {
         outcomes,
         tags: parseTags(tagsInput),
         assets,
-        caseStudyContent: {
-          overview,
-          challenge: caseStudy.challenge,
-          approach: multilineToList(approachText),
-          results: multilineToList(resultsText),
-          learnings,
-          callToAction: cta || undefined,
-        },
+        caseStudyContent: caseStudyForGeneration,
       }
-      const generated = await generateCaseStudyNarrative(snapshot, snapshot.caseStudyContent)
+      const generated = await generateCaseStudyNarrative(snapshot, caseStudyForGeneration)
       setCaseStudy(generated)
       setOverview(generated.overview)
       setApproachText(listToMultiline(generated.approach))

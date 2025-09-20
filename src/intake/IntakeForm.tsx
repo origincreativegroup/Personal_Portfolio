@@ -6,11 +6,10 @@ import {
   defaultTechnologies, 
   projectRoleLabels, 
   projectStatusLabels,
-  type ProjectAsset, 
-  type ProjectMeta, 
-  type ProjectRole, 
-  type ProjectStatus,
-  type ProjectLink
+  type ProjectAsset,
+  type ProjectMeta,
+  type ProjectRole,
+  type ProjectStatus
 } from './schema'
 import './IntakeForm.css'
 import { generateVideoThumbnail } from '../utils/videoThumbnails'
@@ -54,51 +53,6 @@ const createUploadedFileRecord = async (file: File): Promise<UploadedFile> => {
     dataUrl = await readFileAsDataUrl(file)
   } catch (error) {
     console.warn('Unable to read file as data URL', error)
-  }
-
-  const handleAssetDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    setAssetDragOver(false)
-    const files = event.dataTransfer.files
-    if (files && files.length > 0) {
-      void handleAssetSelection(files)
-    }
-  }
-
-  const handleAssetSelection = async (input?: FileList | File[]) => {
-    const fileList = input ? Array.from(input as ArrayLike<File>) : []
-
-    if (assetInputRef.current) {
-      assetInputRef.current.value = ''
-    }
-
-    if (fileList.length === 0) {
-      setLiveMessage('No additional files selected. You can continue without uploads.')
-      return
-    }
-
-    const processed: UploadedFile[] = []
-    for (const file of fileList) {
-      try {
-        const record = await createUploadedFileRecord(file)
-        processed.push(record)
-      } catch (error) {
-        console.error('Failed to process attachment', error)
-      }
-    }
-
-    if (processed.length > 0) {
-      setAssetUploads(previous => [...previous, ...processed])
-      setSubmissionError(null)
-      setLiveMessage(`${processed.length} additional file${processed.length > 1 ? 's' : ''} added.`)
-    } else {
-      setLiveMessage('We could not process the selected files. Please try again.')
-    }
-  }
-
-  const removeAsset = (index: number) => {
-    setAssetUploads(previous => previous.filter((_, itemIndex) => itemIndex !== index))
-    setLiveMessage('Attachment removed.')
   }
 
   if (file.type.startsWith('image/')) {
@@ -221,6 +175,51 @@ export default function IntakeForm({ onComplete }: Props) {
       setFileError('We couldn\'t read that file. Try choosing a different file or format.')
       setLiveMessage('File upload failed. Please try again.')
     }
+  }
+
+  const handleAssetSelection = async (input?: FileList | File[]) => {
+    const fileList = input ? Array.from(input as ArrayLike<File>) : []
+
+    if (assetInputRef.current) {
+      assetInputRef.current.value = ''
+    }
+
+    if (fileList.length === 0) {
+      setLiveMessage('No additional files selected. You can continue without uploads.')
+      return
+    }
+
+    const processed: UploadedFile[] = []
+    for (const file of fileList) {
+      try {
+        const record = await createUploadedFileRecord(file)
+        processed.push(record)
+      } catch (error) {
+        console.error('Failed to process attachment', error)
+      }
+    }
+
+    if (processed.length > 0) {
+      setAssetUploads(previous => [...previous, ...processed])
+      setSubmissionError(null)
+      setLiveMessage(`${processed.length} additional file${processed.length > 1 ? 's' : ''} added.`)
+    } else {
+      setLiveMessage('We could not process the selected files. Please try again.')
+    }
+  }
+
+  const handleAssetDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setAssetDragOver(false)
+    const files = event.dataTransfer.files
+    if (files && files.length > 0) {
+      void handleAssetSelection(files)
+    }
+  }
+
+  const removeAsset = (index: number) => {
+    setAssetUploads(previous => previous.filter((_, itemIndex) => itemIndex !== index))
+    setLiveMessage('Attachment removed.')
   }
 
   const handleInputChange = (field: keyof typeof initialFormState, value: string | boolean | ProjectRole | ProjectStatus) => {
