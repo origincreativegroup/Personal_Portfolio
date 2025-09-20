@@ -145,22 +145,22 @@ const PortfolioEditorPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="app-page">
+      <header className="app-page__header">
+        <div className="app-page__header-inner" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={() => navigate('/dashboard')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
               Dashboard
             </Button>
             <div>
-              <h1 className="text-xl font-semibold">Portfolio editor</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Curate your case studies into a publish-ready layout.</p>
+              <h1 className="section-title">Portfolio editor</h1>
+              <p className="section-subtitle">Curate your case studies into a publish-ready layout.</p>
               {lastSavedAt && (
-                <p className="text-xs text-gray-500 dark:text-gray-500">Last saved {new Date(lastSavedAt).toLocaleString()}</p>
+                <p className="form-control__helper">Last saved {new Date(lastSavedAt).toLocaleString()}</p>
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="button-row">
             <Button as={Link} to="/portfolio" variant="ghost" leftIcon={<Layers className="h-4 w-4" />}>
               View generated portfolio
             </Button>
@@ -171,13 +171,13 @@ const PortfolioEditorPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="space-y-6">
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Hero and framing</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Set the voice for the top of your portfolio.</p>
+      <main className="app-page__body portfolio-editor-grid">
+        <section className="editor-grid">
+          <article className="surface editor-card">
+            <h2 className="section-title">Hero and framing</h2>
+            <p className="section-subtitle">Set the voice for the top of your portfolio.</p>
 
-            <div className="mt-6 space-y-4">
+            <div className="form-grid">
               <Input
                 label="Portfolio title"
                 value={settings.title}
@@ -190,13 +190,13 @@ const PortfolioEditorPage: React.FC = () => {
                 onChange={event => handleUpdateSetting('subtitle', event.target.value)}
                 fullWidth
               />
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Introduction
+              <label className="form-control">
+                <span className="form-control__label">Introduction</span>
                 <textarea
                   value={settings.introduction}
                   onChange={event => handleUpdateSetting('introduction', event.target.value)}
                   rows={4}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
               <Input
@@ -213,39 +213,36 @@ const PortfolioEditorPage: React.FC = () => {
                 placeholder="you@example.com"
                 fullWidth
               />
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Call to action
+              <label className="form-control">
+                <span className="form-control__label">Call to action</span>
                 <textarea
                   value={settings.callToAction ?? ''}
                   onChange={event => handleUpdateSetting('callToAction', event.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                   placeholder="Let’s collaborate on the next launch."
                 />
               </label>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Selected case studies</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Reorder to control how projects appear.</p>
+          <article className="surface editor-card">
+            <h2 className="section-title">Selected case studies</h2>
+            <p className="section-subtitle">Reorder to control how projects appear.</p>
 
             {selectedProjects.length === 0 ? (
-              <p className="mt-6 text-sm text-gray-500 dark:text-gray-500">Pick a few projects from the list to build your showcase.</p>
+              <p className="form-control__helper">Pick a few projects from the list to build your showcase.</p>
             ) : (
-              <ul className="mt-4 space-y-3">
+              <ul className="project-selection__list" style={{ marginTop: '1rem' }}>
                 {selectedProjects.map(project => (
-                  <li
-                    key={project.slug}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800/70"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{project.title}</p>
-                      <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                  <li key={project.slug} className="project-selection__item">
+                    <div className="project-selection__meta" style={{ color: 'inherit' }}>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{project.title}</p>
+                      <p className="project-selection__meta">
                         {project.summary || project.solution || project.problem || 'Add a summary in the case study editor.'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="project-selection__actions">
                       <Button
                         variant="outline"
                         size="sm"
@@ -262,11 +259,7 @@ const PortfolioEditorPage: React.FC = () => {
                       >
                         Down
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleProject(project.slug)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => handleToggleProject(project.slug)}>
                         Remove
                       </Button>
                     </div>
@@ -276,25 +269,25 @@ const PortfolioEditorPage: React.FC = () => {
             )}
           </article>
 
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Available projects</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <article className="surface editor-card">
+            <h2 className="section-title">Available projects</h2>
+            <p className="section-subtitle">
               Tap any project to add it to the featured list. Already selected projects stay highlighted above.
             </p>
 
             {availableProjects.length === 0 ? (
-              <p className="mt-6 text-sm text-gray-500 dark:text-gray-500">All projects are already featured.</p>
+              <p className="form-control__helper">All projects are already featured.</p>
             ) : (
-              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              <ul className="project-selection__list" style={{ marginTop: '1rem' }}>
                 {availableProjects.map(project => (
                   <li key={project.slug}>
                     <button
                       type="button"
                       onClick={() => handleToggleProject(project.slug)}
-                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left text-sm shadow-sm transition hover:border-indigo-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-100"
+                      className="project-selection__item"
                     >
-                      <p className="font-medium">{project.title}</p>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <p style={{ margin: 0, fontWeight: 600 }}>{project.title}</p>
+                      <p className="project-selection__meta">
                         {project.summary || project.solution || 'Craft the case study to add more context.'}
                       </p>
                     </button>
@@ -305,26 +298,21 @@ const PortfolioEditorPage: React.FC = () => {
           </article>
         </section>
 
-        <aside className="space-y-6">
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Live preview</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Refresh to regenerate the layout from your current settings.</p>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-slate-900/80 p-4 shadow-inner dark:border-gray-700">
-              <div
-                className="max-h-[520px] overflow-y-auto rounded-xl bg-black/50 text-sm"
-                dangerouslySetInnerHTML={{ __html: previewMarkup }}
-              />
+        <aside className="portfolio-editor-sidebar">
+          <section className="surface preview-panel">
+            <h2 className="section-title">Live preview</h2>
+            <p className="section-subtitle">Refresh to regenerate the layout from your current settings.</p>
+            <div className="preview-panel__frame">
+              <div dangerouslySetInnerHTML={{ __html: previewMarkup }} />
             </div>
           </section>
 
-          {statusMessage && (
-            <section className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-900 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
-              <p className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                {statusMessage}
-              </p>
+          {statusMessage ? (
+            <section className="status-banner">
+              <CheckCircle2 width={16} height={16} />
+              {statusMessage}
             </section>
-          )}
+          ) : null}
         </aside>
       </main>
     </div>

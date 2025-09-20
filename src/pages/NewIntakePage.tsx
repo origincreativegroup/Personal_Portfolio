@@ -1,12 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft,
-  CheckCircle2,
-  FolderPlus,
-  ImagePlus,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FolderPlus, ImagePlus, Sparkles } from 'lucide-react'
 import { Button, Input } from '../components/ui'
 import type { ProjectAsset, ProjectMeta } from '../intake/schema'
 import { newProject } from '../intake/schema'
@@ -39,7 +33,7 @@ const createAssetFromFile = (file: File): Promise<ProjectAsset> =>
 
 const normaliseListInput = (value: string): string[] =>
   value
-    .split(/[,\n]+/)
+    .split(/[\n,]+/)
     .map(entry => entry.trim())
     .filter(entry => entry.length > 0)
 
@@ -111,39 +105,33 @@ const NewIntakePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-3">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              <ArrowLeft className="h-4 w-4" />
+    <div className="app-page intake-page">
+      <header className="app-page__header">
+        <div className="app-page__header-inner intake-header">
+          <div className="intake-header__meta">
+            <Button as={Link} to="/dashboard" variant="outline" leftIcon={<ArrowLeft width={16} height={16} />}>
               Dashboard
-            </Link>
+            </Button>
             <div>
-              <h1 className="text-xl font-semibold">Project intake</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="section-title">Project intake</h1>
+              <p className="section-subtitle">
                 Capture the essentials so your case study practically writes itself.
               </p>
             </div>
           </div>
-          <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Sparkles className="h-4 w-4" />}>
+          <Button as={Link} to="/portfolio" variant="ghost" leftIcon={<Sparkles width={18} height={18} />}>
             Portfolio
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        <form className="space-y-8" onSubmit={handleSubmit}>
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Project overview</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Give the project a name and a short framing statement.
-            </p>
+      <main className="app-page__body">
+        <form className="intake-body" onSubmit={handleSubmit}>
+          <section className="surface">
+            <h2 className="section-title">Project overview</h2>
+            <p className="section-subtitle">Give the project a name and a short framing statement.</p>
 
-            <div className="mt-6 space-y-4">
+            <div className="form-grid">
               <Input
                 label="Project title"
                 value={title}
@@ -152,127 +140,121 @@ const NewIntakePage: React.FC = () => {
                 required
                 fullWidth
               />
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Summary
+              <label className="form-control form-control--full">
+                <span className="form-control__label">Summary</span>
                 <textarea
                   value={summary}
                   onChange={event => setSummary(event.target.value)}
                   placeholder="One or two sentences that set the scene for the work."
                   rows={3}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Narrative hooks</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              These answers become the backbone of your AI generated case study.
-            </p>
+          <section className="surface">
+            <h2 className="section-title">Narrative hooks</h2>
+            <p className="section-subtitle">These answers become the backbone of your AI generated case study.</p>
 
-            <div className="mt-6 space-y-5">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                What was the challenge?
+            <div className="form-grid">
+              <label className="form-control">
+                <span className="form-control__label">What was the challenge?</span>
                 <textarea
                   value={problem}
                   onChange={event => setProblem(event.target.value)}
                   rows={3}
-                  placeholder="Describe the friction, business goal, or customer problem."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   required
+                  placeholder="Describe the friction, business goal, or customer problem."
+                  className="form-control__textarea"
                 />
               </label>
 
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                How did you approach it?
+              <label className="form-control">
+                <span className="form-control__label">How did you approach it?</span>
                 <textarea
                   value={solution}
                   onChange={event => setSolution(event.target.value)}
                   rows={3}
-                  placeholder="Outline key moves, collaboration patterns, or design decisions."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   required
+                  placeholder="Outline key moves, collaboration patterns, or design decisions."
+                  className="form-control__textarea"
                 />
               </label>
 
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                What happened as a result?
+              <label className="form-control">
+                <span className="form-control__label">What happened as a result?</span>
                 <textarea
                   value={outcomes}
                   onChange={event => setOutcomes(event.target.value)}
                   rows={3}
-                  placeholder="Metrics, qualitative feedback, or momentum the project unlocked."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   required
+                  placeholder="Metrics, qualitative feedback, or momentum the project unlocked."
+                  className="form-control__textarea"
                 />
               </label>
 
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tags
+              <label className="form-control">
+                <span className="form-control__label">Tags</span>
                 <textarea
                   value={tags}
                   onChange={event => setTags(event.target.value)}
                   rows={2}
                   placeholder="Separate with commas or new lines – e.g. product strategy, analytics, design systems"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Reference material</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <section className="surface">
+            <h2 className="section-title">Reference material</h2>
+            <p className="section-subtitle">
               Upload hero images, process shots, or supporting files. You can manage these later in the case study editor.
             </p>
 
-            <div className="mt-6 space-y-4">
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:border-indigo-500">
-                <input type="file" accept="image/*,.pdf,.doc,.docx" multiple className="hidden" onChange={handleAssetUpload} />
-                <ImagePlus className="h-6 w-6" />
-                <span>
-                  Drop files here or <span className="underline">browse</span>
-                </span>
+            <div className="form-grid">
+              <label className="upload-dropzone">
+                <input type="file" accept="image/*,.pdf,.doc,.docx" multiple className="sr-only" onChange={handleAssetUpload} />
+                <ImagePlus width={24} height={24} />
+                <span>Drop files here or <strong>browse</strong></span>
               </label>
 
-              {assets.length > 0 && (
-                <ul className="space-y-2 text-sm">
+              {assets.length > 0 ? (
+                <ul className="asset-list">
                   {assets.map(asset => (
-                    <li key={asset.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/80">
-                      <span className="truncate">
-                        {asset.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAsset(asset.id)}
-                        className="text-xs text-rose-500 hover:text-rose-600"
-                      >
+                    <li key={asset.id} className="asset-list__item">
+                      <div className="asset-list__meta">
+                        <span className="asset-list__name">{asset.name}</span>
+                        <span className="asset-list__type">{asset.mimeType}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveAsset(asset.id)}>
                         Remove
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
+              ) : (
+                <p className="form-control__helper">No assets yet. Add imagery or supporting files to enrich the case study.</p>
               )}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-indigo-200 bg-indigo-50/80 p-6 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/40">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-white p-2 shadow-sm dark:bg-indigo-900/80">
-                <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+          <section className="surface surface--tinted">
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div className="btn__icon" style={{ padding: '0.4rem', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
+                <Sparkles width={20} height={20} />
               </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100">AI narrative boost</h2>
-                <p className="text-sm text-indigo-800/80 dark:text-indigo-200/80">
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                <h2 className="section-title" style={{ marginBottom: 0 }}>AI narrative boost</h2>
+                <p className="section-subtitle">
                   Keep this enabled to pre-fill the case study editor with an AI generated narrative.
                 </p>
-                <label className="inline-flex items-center gap-2 text-sm text-indigo-900 dark:text-indigo-100">
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
                   <input
                     type="checkbox"
                     checked={autoNarrative}
                     onChange={event => setAutoNarrative(event.target.checked)}
-                    className="h-4 w-4 rounded border-indigo-400 text-indigo-600 focus:ring-indigo-500"
                   />
                   Auto-generate a narrative draft after saving
                 </label>
@@ -280,19 +262,18 @@ const NewIntakePage: React.FC = () => {
             </div>
           </section>
 
-          <footer className="flex flex-wrap items-center justify-between gap-4">
-            <p className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              Data is stored locally in your browser. Export anytime from the dashboard.
+          <footer className="intake-actions">
+            <p className="intake-actions__note">
+              <CheckCircle2 width={16} height={16} /> Data is stored locally in your browser. Export anytime from the dashboard.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="button-row">
               <Button as={Link} to="/dashboard" variant="ghost">
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                leftIcon={<FolderPlus className="h-4 w-4" />}
+                leftIcon={<FolderPlus width={18} height={18} />}
                 disabled={!canSubmit}
                 loading={isSubmitting}
               >

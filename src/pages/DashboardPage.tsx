@@ -352,99 +352,96 @@ const DashboardPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading your projects..." centered />
+      <div className="app-page">
+        <main
+          className="app-page__body"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}
+        >
+          <LoadingSpinner size="lg" text="Loading your projects..." centered />
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/40">
-              <Folder className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+    <div className="app-page">
+      <header className="app-page__header">
+        <div className="app-page__header-inner">
+          <div className="dashboard-hero">
+            <div className="dashboard-hero__icon">
+              <Folder width={28} height={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Portfolio control centre</h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="dashboard-hero__title">Portfolio control centre</h1>
+              <p className="section-subtitle">
                 Capture project details, manage files locally, and generate polished narratives.
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="button-row">
             <ThemeToggle />
-            <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Layers className="h-4 w-4" />}>
+            <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Layers size={18} />}>
               View portfolio
             </Button>
-            <Button as={Link} to="/create" variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
+            <Button as={Link} to="/create" variant="primary" leftIcon={<Plus size={18} />}>
               New project
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-10 space-y-8">
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-2xl border border-indigo-100 bg-indigo-50 p-6 shadow-sm dark:border-indigo-800/60 dark:bg-indigo-950/40">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-300">Projects</p>
-                <p className="mt-2 text-3xl font-semibold">{stats.totalProjects}</p>
-              </div>
-              <div className="rounded-full bg-white/70 p-2 dark:bg-indigo-900/60">
-                <Folder className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-              </div>
+      <main className="app-page__body">
+        <section className="stats-grid">
+          <article
+            className="stat-card surface"
+            style={{ background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)' }}
+          >
+            <div className="stat-card__icon">
+              <Folder width={18} height={18} />
             </div>
-            <p className="mt-3 text-xs text-indigo-700/80 dark:text-indigo-200/80">
-              All projects are saved locally in your browser.
-            </p>
+            <span className="stat-card__label">Projects</span>
+            <span className="stat-card__value">{stats.totalProjects}</span>
+            <p className="stat-card__description">All projects are saved locally in your browser.</p>
           </article>
 
-          <article className="rounded-2xl border border-purple-100 bg-purple-50 p-6 shadow-sm dark:border-purple-900/50 dark:bg-purple-950/40">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-600 dark:text-purple-300">Case studies ready</p>
-                <p className="mt-2 text-3xl font-semibold">{stats.caseStudiesReady}</p>
-              </div>
-              <div className="rounded-full bg-white/70 p-2 dark:bg-purple-900/60">
-                <FileText className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-              </div>
+          <article
+            className="stat-card surface"
+            style={{ background: 'linear-gradient(135deg, #f3e8ff, #ede9fe)' }}
+          >
+            <div className="stat-card__icon">
+              <FileText width={18} height={18} />
             </div>
-            <p className="mt-3 text-xs text-purple-700/80 dark:text-purple-200/80">
+            <span className="stat-card__label">Case studies ready</span>
+            <span className="stat-card__value">{stats.caseStudiesReady}</span>
+            <p className="stat-card__description">
               AI-assisted narratives make these projects portfolio-ready.
             </p>
           </article>
 
-          <article className="rounded-2xl border border-sky-100 bg-sky-50 p-6 shadow-sm dark:border-sky-900/60 dark:bg-sky-950/40">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-sky-600 dark:text-sky-300">Assets</p>
-                <p className="mt-2 text-3xl font-semibold">{stats.totalAssets}</p>
-              </div>
-              <div className="rounded-full bg-white/70 p-2 dark:bg-sky-900/60">
-                <Upload className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-              </div>
+          <article
+            className="stat-card surface"
+            style={{ background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)' }}
+          >
+            <div className="stat-card__icon">
+              <Upload width={18} height={18} />
             </div>
-            <p className="mt-3 text-xs text-sky-700/80 dark:text-sky-200/80">
-              Upload images and files directly into each project.
-            </p>
+            <span className="stat-card__label">Assets</span>
+            <span className="stat-card__value">{stats.totalAssets}</span>
+            <p className="stat-card__description">Upload images and files directly into each project.</p>
           </article>
 
-          <article className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">Storage used</p>
-                <p className="mt-2 text-3xl font-semibold">
-                  {storageUsage ? `${storageUsage.used}MB` : '—'}
-                </p>
-              </div>
-              <div className="rounded-full bg-white/70 p-2 dark:bg-emerald-900/60">
-                <RefreshCw className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
-              </div>
+          <article
+            className="stat-card surface"
+            style={{ background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)' }}
+          >
+            <div className="stat-card__icon">
+              <RefreshCw width={18} height={18} />
             </div>
-            <p className="mt-3 text-xs text-emerald-700/80 dark:text-emerald-200/80">
+            <span className="stat-card__label">Storage used</span>
+            <span className="stat-card__value">
+              {storageUsage ? `${storageUsage.used}MB` : '—'}
+            </span>
+            <p className="stat-card__description">
               {storageUsage
                 ? `Approx. ${storageUsage.percentage}% of ${storageUsage.available}MB local capacity`
                 : 'Storage usage unavailable'}
@@ -452,22 +449,34 @@ const DashboardPage: React.FC = () => {
           </article>
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-          <div className="flex flex-col gap-4 border-b border-gray-200 pb-6 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+        <section className="surface surface--raised">
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '1.5rem',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: '1px solid var(--color-border)',
+              paddingBottom: '1.5rem',
+              marginBottom: '1.5rem',
+            }}
+          >
             <div>
-              <h2 className="text-lg font-semibold">Local projects</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Search, export, or jump straight into the case study editor.
-              </p>
+              <h2 className="section-title">Local projects</h2>
+              <p className="section-subtitle">Search, export, or jump straight into the case study editor.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                placeholder="Search projects"
-                value={searchQuery}
-                onChange={event => setSearchQuery(event.target.value)}
-                leftIcon={<ArrowRightCircle className="h-4 w-4 rotate-45" />}
-              />
-              <div className="flex items-center gap-2">
+            <div className="dashboard-toolbar">
+              <div className="dashboard-toolbar__search">
+                <Input
+                  placeholder="Search projects"
+                  value={searchQuery}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  leftIcon={<ArrowRightCircle width={16} height={16} />}
+                  fullWidth
+                />
+              </div>
+              <div className="dashboard-toolbar__actions">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -478,7 +487,7 @@ const DashboardPage: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  leftIcon={<Upload className="h-4 w-4" />}
+                  leftIcon={<Upload width={16} height={16} />}
                   loading={isImporting}
                 >
                   Import
@@ -486,7 +495,7 @@ const DashboardPage: React.FC = () => {
                 <Button
                   variant="ghost"
                   onClick={() => downloadJson('portfolio-projects.json', projects)}
-                  leftIcon={<Download className="h-4 w-4" />}
+                  leftIcon={<Download width={16} height={16} />}
                   disabled={projects.length === 0}
                 >
                   Export all
@@ -496,56 +505,49 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {filteredProjects.length === 0 ? (
-            <div className="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="dashboard-empty">
               {projects.length === 0
                 ? 'No projects yet. Start by creating your first project intake.'
                 : 'No projects match your search.'}
             </div>
           ) : (
-            <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+            <ul className="dashboard-list">
               {filteredProjects.map(project => (
-                <li key={project.slug} className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                        {project.title}
-                      </h3>
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <li key={project.slug} className="dashboard-project">
+                  <div>
+                    <div className="button-row" style={{ justifyContent: 'flex-start' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{project.title}</h3>
+                      <span className="status-pill">
                         {project.status === 'draft' ? 'Draft' : project.status === 'cast' ? 'In review' : 'Published'}
                       </span>
                     </div>
-                    {project.summary && (
-                      <p className="max-w-2xl text-sm text-gray-600 dark:text-gray-400">{project.summary}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                    {project.summary ? (
+                      <p className="section-subtitle" style={{ marginTop: '0.5rem' }}>
+                        {project.summary}
+                      </p>
+                    ) : null}
+                    <div className="dashboard-project__meta">
                       <span>{project.assets.length} assets</span>
                       <span>Updated {formatDate(project.updatedAt)}</span>
-                      <span>
-                        {project.caseStudyContent?.overview
-                          ? 'Narrative ready'
-                          : 'Needs narrative'}
-                      </span>
+                      <span>{project.caseStudyContent?.overview ? 'Narrative ready' : 'Needs narrative'}</span>
                     </div>
-                    {project.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                    {project.tags.length > 0 ? (
+                      <div className="dashboard-project__tags">
                         {project.tags.slice(0, 5).map(tag => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-200"
-                          >
+                          <span key={tag} className="dashboard-project__tag">
                             #{tag}
                           </span>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="button-row" style={{ justifyContent: 'flex-start' }}>
                     <Button
                       as={Link}
                       to={`/editor/${project.slug}`}
                       variant="primary"
                       size="sm"
-                      leftIcon={<FileText className="h-4 w-4" />}
+                      leftIcon={<FileText width={16} height={16} />}
                     >
                       Case study
                     </Button>
@@ -553,7 +555,7 @@ const DashboardPage: React.FC = () => {
                       onClick={() => handleExport(project)}
                       variant="outline"
                       size="sm"
-                      leftIcon={<Download className="h-4 w-4" />}
+                      leftIcon={<Download width={16} height={16} />}
                     >
                       Export
                     </Button>
@@ -561,7 +563,7 @@ const DashboardPage: React.FC = () => {
                       onClick={() => handleDelete(project.slug)}
                       variant="danger"
                       size="sm"
-                      leftIcon={<Trash2 className="h-4 w-4" />}
+                      leftIcon={<Trash2 width={16} height={16} />}
                     >
                       Delete
                     </Button>
@@ -572,9 +574,11 @@ const DashboardPage: React.FC = () => {
           )}
         </section>
 
-        <section className="rounded-3xl border border-indigo-200 bg-indigo-50/60 p-6 text-sm text-indigo-900 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
-          <h3 className="text-base font-semibold">Workflow tips</h3>
-          <ol className="mt-3 list-decimal space-y-2 pl-5">
+        <section className="dashboard-workflow">
+          <h3 className="section-title" style={{ marginBottom: '0.75rem' }}>
+            Workflow tips
+          </h3>
+          <ol>
             <li>Capture a project through the intake to gather narrative hooks and assets.</li>
             <li>Use the case study editor to refine copy, upload visuals, and generate AI narratives.</li>
             <li>Arrange your highlights in the portfolio editor before sharing or exporting.</li>

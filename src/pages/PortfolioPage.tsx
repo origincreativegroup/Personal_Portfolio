@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Loader2, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { buildPortfolioTemplate } from '../utils/portfolioTemplates'
 import { loadPortfolioDocument } from '../utils/portfolioStorage'
 import { listProjects } from '../utils/storageManager'
 import type { ProjectMeta } from '../intake/schema'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
 
 type PortfolioViewDocument = { html: string; css: string }
 
@@ -50,58 +51,52 @@ const PortfolioPage: React.FC = () => {
   }, [document])
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="portfolio-view">
+      <header className="portfolio-view__header">
+        <div className="portfolio-view__header-inner">
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="btn btn--outline"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft width={16} height={16} />
               Dashboard
             </button>
             <div>
-              <h1 className="text-xl font-semibold text-white">Portfolio</h1>
-              <p className="text-sm text-slate-400">A generated view of your saved projects and case studies.</p>
+              <h1 className="section-title" style={{ color: '#fff' }}>Portfolio</h1>
+              <p className="section-subtitle" style={{ color: 'rgba(226,232,240,0.7)' }}>
+                A generated view of your saved projects and case studies.
+              </p>
             </div>
           </div>
           <Link
             to="/portfolio/editor"
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-600"
+            className="btn btn--primary"
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil width={16} height={16} />
             Edit portfolio
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10">
+      <main className="portfolio-view__body">
         {isLoading ? (
-          <div className="flex h-[60vh] items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/40">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing portfolio…
-            </div>
-          </div>
+          <LoadingSpinner size="lg" text="Preparing portfolio…" centered />
         ) : error ? (
-          <div className="rounded-2xl border border-red-400 bg-red-500/10 p-6 text-red-200">
+          <div className="portfolio-view__error">
             {error}
           </div>
         ) : document ? (
-          <div
-            className="portfolio-render rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-2xl"
-            dangerouslySetInnerHTML={{ __html: markup }}
-          />
+          <div className="portfolio-view__panel" dangerouslySetInnerHTML={{ __html: markup }} />
         ) : (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-300">
+          <div className="portfolio-view__empty">
             No portfolio content yet. Create a project and craft a case study to populate this page.
           </div>
         )}
 
         {!isLoading && projects.length === 0 && (
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+          <div className="portfolio-view__empty" style={{ marginTop: '1.5rem' }}>
             Tip: Start by creating a project from the dashboard. The editor will generate a starter case study for you.
           </div>
         )}

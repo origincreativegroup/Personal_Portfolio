@@ -1,30 +1,27 @@
-import React from 'react';
-import { Sun, Moon } from 'lucide-react';
-import { useApp } from '../contexts/AppContext';
-import Button from './ui/Button';
+import React from 'react'
+import { Sun, Moon } from 'lucide-react'
+import { useApp } from '../contexts/AppContext'
 
 const ThemeToggle: React.FC = () => {
-  const { state, setTheme } = useApp();
+  const { state, setTheme } = useApp()
 
   const toggleTheme = () => {
-    setTheme(state.theme === 'light' ? 'dark' : 'light');
-  };
+    setTheme(state.theme === 'light' ? 'dark' : 'light')
+  }
+
+  const isLight = state.theme === 'light'
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
+      type="button"
+      className="theme-toggle"
       onClick={toggleTheme}
-      className="relative"
-      aria-label={`Switch to ${state.theme === 'light' ? 'dark' : 'light'} theme`}
+      aria-label={`Switch to ${isLight ? 'dark' : 'light'} theme`}
     >
-      {state.theme === 'light' ? (
-        <Moon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-      ) : (
-        <Sun className="h-5 w-5 text-yellow-500" />
-      )}
-    </Button>
-  );
-};
+      {isLight ? <Moon width={16} height={16} /> : <Sun width={16} height={16} />}
+      <span>{isLight ? 'Dark' : 'Light'} mode</span>
+    </button>
+  )
+}
 
-export default React.memo(ThemeToggle);
+export default React.memo(ThemeToggle)
