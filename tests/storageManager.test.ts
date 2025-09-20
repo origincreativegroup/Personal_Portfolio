@@ -13,6 +13,7 @@ const createProject = (overrides: Partial<ProjectMeta> = {}): ProjectMeta => ({
   slug: 'test-project',
   summary: 'Summary',
   problem: 'Problem',
+  challenge: 'Challenge',
   solution: 'Solution',
   outcomes: 'Outcomes',
   tags: ['test'],

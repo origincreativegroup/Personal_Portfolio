@@ -8,11 +8,14 @@
 ## Problem
 <What was broken or missing?>
 
-## Actions
-<What did you do? Focus on your contribution.>
+## Challenge
+<Context or constraints that made this tricky>
 
-## Results
-<Impact in plain language. Add numbers if you have them.>
+## Solution
+<What you delivered. Emphasise your contribution.>
+
+## Impact
+<Outcomes and measurable results.>
 
 ## Highlights
 - <One-liner impact>

@@ -122,6 +122,7 @@ export type ProjectMeta = {
   
   // Narrative Hooks (the three key questions)
   problem: string // What was the problem you identified?
+  challenge?: string // Context or constraints captured during intake
   solution: string // What solution did you create?
   outcomes: string // What were the outcomes/impact?
   
@@ -192,6 +193,7 @@ export const newProject = (title: string): ProjectMeta => ({
   title,
   slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g,''),
   problem: "",
+  challenge: "",
   solution: "",
   outcomes: "",
   tags: [],

@@ -1,5 +1,5 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "3.0.0",
   "title": "<Project Title>",
   "organization": "<Org>",
   "work_type": "Employment|Freelance|Personal",
@@ -34,11 +34,31 @@
   "privacy": {
     "nda": false
   },
-  "case": {
-    "problem": "<...>",
-    "actions": "<...>",
-    "results": "<...>"
+  "pcsi": {
+    "problem": "<What problem were you solving?>",
+    "challenge": "<Context, constraints, or blockers>",
+    "solution": "<What you delivered>",
+    "impact": "<Outcomes and measurable results>"
   },
-  "cover_image": "cover.jpg",
-  "created_at": "<auto>"
+  "case": {
+    "problem": "",
+    "challenge": "",
+    "actions": "",
+    "results": ""
+  },
+  "timeframe": {
+    "start": "<Jan 2025>",
+    "end": "<Mar 2025>",
+    "duration": "<12 weeks>"
+  },
+  "collaborators": [
+    { "name": "Jane Doe", "role": "Research" }
+  ],
+  "metrics": [
+    { "label": "Conversion", "value": "+32%" }
+  ],
+  "cover_image": "06_Exports/cover.jpg",
+  "assets": [],
+  "created_at": "<auto>",
+  "updated_at": "<auto>"
 }

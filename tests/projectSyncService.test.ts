@@ -27,7 +27,7 @@ type MutableProject = {
   tools: string[];
   tags: string[];
   highlights: string[];
-  links: Record<string, unknown> | null;
+  links: unknown;
   nda: boolean | null;
   coverImage: string | null;
   caseProblem: string | null;
@@ -67,6 +67,76 @@ describe('projectSyncService helpers', () => {
   it('slugifies titles safely', () => {
     assert.strictEqual(slugify('Hello World'), 'hello-world');
     assert.strictEqual(slugify('  🚀 Launch Plan!  '), 'launch-plan');
+  });
+
+  it('normalises legacy link structures to arrays', () => {
+    const result = parseMetadata({
+      title: 'Links project',
+      links: {
+        live: ' https://example.com ',
+        repo: { url: 'https://github.com/example/repo', label: ' GitHub ' },
+        video: { href: 'https://youtu.be/demo', name: 'Launch video' },
+        empty: '',
+      },
+    } as unknown as Record<string, unknown>);
+
+    assert.deepEqual(result.links, [
+      { type: 'live', url: 'https://example.com' },
+      { type: 'repo', url: 'https://github.com/example/repo', label: 'GitHub' },
+      { type: 'video', url: 'https://youtu.be/demo', label: 'Launch video' },
+    ]);
+  });
+
+  it('returns empty link arrays when metadata omits links', () => {
+    const result = parseMetadata({
+      title: 'No links project',
+    } as unknown as Record<string, unknown>);
+
+    assert.deepEqual(result.links, []);
+  });
+
+  it('normalises database link maps when building metadata responses', () => {
+    const service = new ProjectSyncService({} as any, { projectRoot: process.cwd() });
+    const metadata = service.metadataFromProject({
+      id: 'db-project',
+      slug: 'db-project',
+      folder: 'db-project',
+      title: 'DB Project',
+      summary: null,
+      description: null,
+      organization: null,
+      workType: null,
+      year: null,
+      role: null,
+      seniority: null,
+      categories: [],
+      skills: [],
+      tools: [],
+      tags: [],
+      highlights: [],
+      links: {
+        live: 'https://example.com/live',
+        repo: { url: 'https://github.com/example/repo', label: 'Repo' },
+      },
+      nda: null,
+      coverImage: null,
+      caseProblem: null,
+      caseActions: null,
+      caseResults: null,
+      schemaVersion: null,
+      metadataChecksum: null,
+      briefChecksum: null,
+      metadataUpdatedAt: null,
+      briefUpdatedAt: null,
+      fsLastModified: null,
+      lastSyncedAt: null,
+      syncStatus: 'clean',
+    } as any);
+
+    assert.deepEqual(metadata.links, [
+      { type: 'live', url: 'https://example.com/live' },
+      { type: 'repo', url: 'https://github.com/example/repo', label: 'Repo' },
+    ]);
   });
 });
 
@@ -112,7 +182,7 @@ describe('projectSyncService metadata updates', () => {
       tools: ['figma'],
       tags: ['ux'],
       highlights: ['shipped v1'],
-      links: {},
+      links: [],
       nda: false,
       coverImage: null,
       caseProblem: 'Slow funnel',
@@ -180,17 +250,29 @@ describe('projectSyncService metadata updates', () => {
         tools: ['figma'],
         tags: ['ux'],
         highlights: ['launched beta'],
+        links: [
+          { type: 'demo', url: 'https://demo.example.com', label: ' Demo ' },
+          { url: ' https://fallback.example.com ' },
+        ],
         case: { problem: 'Old problem', actions: 'New actions', results: 'New results' },
       } as MetadataResponse,
       expectedChecksum: project.metadataChecksum ?? undefined,
     });
 
-    const disk = await fs.readFile(path.join(projectDir, 'metadata.json'), 'utf8');
-    assert.match(disk, /"Updated project"/);
-    assert.match(disk, /"launched beta"/);
+    const disk = JSON.parse(await fs.readFile(path.join(projectDir, 'metadata.json'), 'utf8')) as Record<string, unknown>;
+    assert.equal(disk.title, 'Updated project');
+    assert.ok(Array.isArray(disk.links));
+    assert.deepEqual(disk.links, [
+      { type: 'demo', url: 'https://demo.example.com', label: 'Demo' },
+      { url: 'https://fallback.example.com' },
+    ]);
 
     assert.strictEqual(updated.title, 'Updated project');
     assert.deepStrictEqual(project.categories, ['design', 'ux']);
+    assert.deepEqual(project.links, [
+      { type: 'demo', url: 'https://demo.example.com', label: 'Demo' },
+      { url: 'https://fallback.example.com' },
+    ]);
     assert.ok(project.metadataChecksum);
     assert.notStrictEqual(project.metadataChecksum, null);
   });

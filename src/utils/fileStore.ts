@@ -113,6 +113,7 @@ const readStore = (): Store => {
       slug,
       summary: typeof meta.summary === 'string' ? meta.summary : undefined,
       problem: typeof meta.problem === 'string' ? meta.problem : '',
+      challenge: typeof meta.challenge === 'string' ? meta.challenge : '',
       solution: typeof meta.solution === 'string' ? meta.solution : '',
       outcomes: typeof meta.outcomes === 'string' ? meta.outcomes : '',
       tags,
@@ -200,6 +201,7 @@ export function saveProject(meta: ProjectMeta) {
     createdAt: meta.createdAt,
     updatedAt: timestamp,
     tags: Array.isArray(meta.tags) ? meta.tags : [],
+    challenge: typeof meta.challenge === 'string' ? meta.challenge : undefined,
     technologies: Array.isArray(meta.technologies)
       ? meta.technologies.filter(Boolean)
       : undefined,
