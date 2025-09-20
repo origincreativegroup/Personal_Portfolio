@@ -7,8 +7,10 @@ let errorProxy: PrismaClient | null = null
 
 const createErrorProxy = (error: Error): PrismaClient =>
   new Proxy({}, {
-    get: () => {
-      throw error
+    get: (_target, prop) => {
+      throw new Error(
+        `Failed to access PrismaClient property or method "${String(prop)}": ${error.message}`
+      );
     },
   }) as PrismaClient
 
