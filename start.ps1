@@ -16,6 +16,20 @@ $Colors = @{
     Magenta = "Magenta"
 }
 
+# Resolve project paths
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $ScriptDir
+
+$PortfolioFrontendPath = Join-Path $ScriptDir "portfolio-intake"
+if (Test-Path (Join-Path $PortfolioFrontendPath "package.json")) {
+    $FrontendPath = $PortfolioFrontendPath
+    $FrontendName = Split-Path $FrontendPath -Leaf
+}
+else {
+    $FrontendPath = $ScriptDir
+    $FrontendName = Split-Path $ScriptDir -Leaf
+}
+
 # Function to print colored output
 function Write-Status {
     param([string]$Message)
@@ -101,13 +115,20 @@ function Install-Dependencies {
     Write-Status "Checking and installing dependencies..."
 
     # Frontend dependencies
-    if (-not (Test-Path "node_modules")) {
-        Write-Status "Installing frontend dependencies..."
+    $frontendNodeModules = Join-Path $FrontendPath "node_modules"
+    if (-not (Test-Path $frontendNodeModules)) {
+        Write-Status "Installing frontend dependencies ($FrontendName)..."
+        Push-Location $FrontendPath
         npm install
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to install frontend dependencies"
+            Pop-Location
             exit 1
         }
+        Pop-Location
+    }
+    else {
+        Write-Success "Frontend dependencies already installed"
     }
 
     # Backend dependencies
@@ -180,13 +201,15 @@ function Start-Backend {
 
 # Function to start the frontend
 function Start-Frontend {
-    Write-Status "Starting frontend development server..."
+    Write-Status "Starting frontend development server from $FrontendName..."
 
     # Kill any existing process on port 5173
     Stop-PortProcesses -Port 5173
 
     # Start frontend in the background
+    Push-Location $FrontendPath
     $frontendJob = Start-Job -ScriptBlock { Set-Location $using:PWD; npm run dev }
+    Pop-Location
     Write-Success "Frontend server starting on port 5173 (Job ID: $($frontendJob.Id))"
 
     # Wait a moment for the server to start
@@ -276,6 +299,9 @@ if ($Help) {
 try {
     Write-Header "🎨 Portfolio Forge Startup Script"
     Write-Header "=================================="
+    Write-Host ""
+
+    Write-Status "Using frontend workspace: $FrontendName ($FrontendPath)"
     Write-Host ""
 
     # Check prerequisites
