@@ -595,6 +595,18 @@ const DashboardPage: React.FC = () => {
               >
                 Settings
               </Link>
+              <Link
+                to="/portfolio"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Portfolio
+              </Link>
+              <Link
+                to="/portfolio/editor"
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+              >
+                Portfolio editor
+              </Link>
             </div>
           </div>
           {(importMessage || importError) && (

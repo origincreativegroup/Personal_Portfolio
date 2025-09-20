@@ -83,8 +83,8 @@ const readStore = (): Store => {
       outcomes: typeof meta.outcomes === 'string' ? meta.outcomes : '',
       tags,
       technologies: technologiesArray.length > 0 ? technologiesArray : undefined,
-      status: (typeof meta.status === 'string' && ['draft', 'cast', 'published'].includes(meta.status)) 
-        ? meta.status as ProjectStatus 
+      status: (typeof meta.status === 'string' && ['draft', 'cast', 'published'].includes(meta.status))
+        ? meta.status as ProjectStatus
         : 'draft',
       role: (typeof meta.role === 'string' && ['designer', 'developer', 'director', 'project-manager', 'researcher', 'strategist', 'other'].includes(meta.role))
         ? meta.role as ProjectRole
@@ -100,6 +100,8 @@ const readStore = (): Store => {
       layout: normaliseLayout(meta.layout),
       autoGenerateNarrative: typeof meta.autoGenerateNarrative === 'boolean' ? meta.autoGenerateNarrative : false,
       aiGeneratedSummary: typeof meta.aiGeneratedSummary === 'string' ? meta.aiGeneratedSummary : undefined,
+      caseStudyHtml: typeof meta.caseStudyHtml === 'string' ? meta.caseStudyHtml : undefined,
+      caseStudyCss: typeof meta.caseStudyCss === 'string' ? meta.caseStudyCss : undefined,
     }
   })
 
