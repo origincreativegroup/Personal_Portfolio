@@ -1,4 +1,4 @@
-import { type ComponentType, useMemo, useState } from 'react'
+import { type ComponentType, useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   ArrowUpRight,
@@ -15,6 +15,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  X,
 } from 'lucide-react'
 import './App.css'
 import {
@@ -176,42 +177,46 @@ const PipelineTable = ({ items }: PipelineTableProps) => (
       </div>
     </header>
 
-    <table className="pipeline-table">
-      <thead>
-        <tr>
-          <th scope="col">Project</th>
-          <th scope="col">Client</th>
-          <th scope="col">Status</th>
-          <th scope="col">Progress</th>
-          <th scope="col" className="align-right">Budget</th>
-          <th scope="col">Due</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map(item => (
-          <tr key={item.id}>
-            <td data-title="Project">
-              <div className="pipeline-project">
-                <span className="pipeline-project__code">{item.id}</span>
-                <span className="pipeline-project__name">{item.project}</span>
-              </div>
-            </td>
-            <td data-title="Client">{item.client}</td>
-            <td data-title="Status">
-              <span className={`status-badge status-badge--${statusTone[item.status]}`}>{item.status}</span>
-            </td>
-            <td data-title="Progress">
-              <div className="progress">
-                <span className="progress__bar" style={{ width: `${item.progress}%` }} />
-                <span className="progress__value">{item.progress}%</span>
-              </div>
-            </td>
-            <td data-title="Budget" className="align-right">{formatCurrency(item.amount)}</td>
-            <td data-title="Due">{formatDate(item.dueDate)}</td>
+    <div className="table-scroll">
+      <table className="pipeline-table">
+        <thead>
+          <tr>
+            <th scope="col">Project</th>
+            <th scope="col">Client</th>
+            <th scope="col">Status</th>
+            <th scope="col">Progress</th>
+            <th scope="col" className="align-right">Budget</th>
+            <th scope="col">Due</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id}>
+              <td data-title="Project">
+                <div className="pipeline-project">
+                  <span className="pipeline-project__code">{item.id}</span>
+                  <span className="pipeline-project__name">{item.project}</span>
+                </div>
+              </td>
+              <td data-title="Client">{item.client}</td>
+              <td data-title="Status">
+                <span className={`status-badge status-badge--${statusTone[item.status]}`}>{item.status}</span>
+              </td>
+              <td data-title="Progress">
+                <div className="progress">
+                  <span className="progress__track">
+                    <span className="progress__bar" style={{ width: `${item.progress}%` }} />
+                  </span>
+                  <span className="progress__value">{item.progress}%</span>
+                </div>
+              </td>
+              <td data-title="Budget" className="align-right">{formatCurrency(item.amount)}</td>
+              <td data-title="Due">{formatDate(item.dueDate)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   </section>
 )
 
@@ -365,26 +370,103 @@ const initials = (name: string): string => {
 }
 
 function App() {
+  const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
   const [timeframe, setTimeframe] = useState<DashboardTimeframe>(defaultDashboardTimeframe)
   const snapshot = useMemo<DashboardSnapshot>(() => buildDashboardSnapshot(timeframe), [timeframe])
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 960px)')
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches)
+      if (event.matches) {
+        setSidebarOpen(false)
+      }
+    }
+
+    setIsDesktop(mediaQuery.matches)
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange)
+    } else {
+      mediaQuery.addListener(handleChange)
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange)
+      } else {
+        mediaQuery.removeListener(handleChange)
+      }
+    }
+  }, [])
+
+  const isSidebarVisible = isDesktop || isSidebarOpen
+
+  const toggleSidebar = () => {
+    if (isDesktop) {
+      return
+    }
+    setSidebarOpen(previous => !previous)
+  }
+
+  const closeSidebar = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleNavigation = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Primary navigation">
-        <div className="sidebar__brand">
-          <div className="sidebar__mark" aria-hidden="true">
-            <ShieldCheck size={24} />
+      {!isDesktop && isSidebarOpen && (
+        <button type="button" className="sidebar-overlay" onClick={closeSidebar} aria-label="Close navigation" />
+      )}
+      <aside
+        id="primary-navigation"
+        className={[
+          'sidebar',
+          isDesktop ? 'sidebar--desktop' : 'sidebar--mobile',
+          isSidebarVisible ? 'sidebar--open' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label="Primary navigation"
+        aria-hidden={!isDesktop && !isSidebarOpen}
+      >
+        <div className="sidebar__header">
+          <div className="sidebar__brand">
+            <div className="sidebar__mark" aria-hidden="true">
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <span className="sidebar__title">TailAdmin</span>
+              <span className="sidebar__subtitle">React edition</span>
+            </div>
           </div>
-          <div>
-            <span className="sidebar__title">TailAdmin</span>
-            <span className="sidebar__subtitle">React edition</span>
-          </div>
+          {!isDesktop && (
+            <button type="button" className="sidebar__close" onClick={closeSidebar} aria-label="Close navigation">
+              <X size={18} />
+            </button>
+          )}
         </div>
         <nav>
           <ul className="sidebar__nav">
             {NAVIGATION_ITEMS.map(item => (
               <li key={item.label}>
-                <a className={`sidebar__link${item.label === 'Overview' ? ' is-active' : ''}`} href="#">
+                <a
+                  className={`sidebar__link${item.label === 'Overview' ? ' is-active' : ''}`}
+                  href="#"
+                  onClick={event => {
+                    event.preventDefault()
+                    handleNavigation()
+                  }}
+                >
                   <item.icon size={16} aria-hidden="true" />
                   <span>{item.label}</span>
                 </a>
@@ -409,7 +491,14 @@ function App() {
 
       <div className="workspace">
         <header className="topbar">
-          <button type="button" className="topbar__menu" aria-label="Open navigation">
+          <button
+            type="button"
+            className="topbar__menu"
+            aria-label="Toggle navigation"
+            aria-controls="primary-navigation"
+            aria-expanded={isDesktop ? true : isSidebarOpen}
+            onClick={toggleSidebar}
+          >
             <Menu size={18} />
           </button>
           <div className="topbar__search">
