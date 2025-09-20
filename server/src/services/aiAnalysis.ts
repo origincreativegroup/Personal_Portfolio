@@ -20,20 +20,29 @@ type ProjectWithFiles = {
   }>;
 };
 
+type AIAnalysisServiceOptions = {
+  prisma?: PrismaClient;
+  openAI?: OpenAI;
+};
+
 export class AIAnalysisService {
   private openai: OpenAI | null;
   private prisma: PrismaClient;
 
-  constructor() {
-    // Only initialize OpenAI if API key is available
+  constructor(options: AIAnalysisServiceOptions = {}) {
+    const { prisma, openAI } = options;
     const apiKey = process.env.OPENAI_API_KEY;
-    if (apiKey) {
+
+    if (openAI) {
+      this.openai = openAI;
+    } else if (apiKey) {
       this.openai = new OpenAI({ apiKey });
     } else {
       console.warn('OpenAI API key not found. AI analysis will be disabled.');
       this.openai = null;
     }
-    this.prisma = new PrismaClient();
+
+    this.prisma = prisma ?? new PrismaClient();
   }
 
   async analyzeProject(projectId: string): Promise<AnalysisResult> {

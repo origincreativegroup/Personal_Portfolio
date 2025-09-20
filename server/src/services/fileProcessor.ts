@@ -16,13 +16,18 @@ interface ProcessResult {
   metadata: Record<string, unknown>;
 }
 
+type FileProcessorOptions = {
+  storage?: Storage;
+  prisma?: PrismaClient;
+};
+
 export class FileProcessor {
   private storage: Storage;
   private prisma: PrismaClient;
 
-  constructor() {
-    this.storage = new Storage();
-    this.prisma = new PrismaClient();
+  constructor(options: FileProcessorOptions = {}) {
+    this.storage = options.storage ?? new Storage();
+    this.prisma = options.prisma ?? new PrismaClient();
   }
 
   async processFile(fileId: string): Promise<void> {
