@@ -856,6 +856,17 @@
   gap: var(--spacing-sm);
 }
 
+.preview-panel--full-width {
+  margin: var(--spacing-lg) 0;
+  max-width: none;
+  width: 100%;
+}
+
+.preview-panel--full-width .preview-panel__frame {
+  max-height: none;
+  min-height: 600px;
+}
+
 .preview-panel__frame {
   border-radius: 24px;
   border: 1px solid var(--color-border);

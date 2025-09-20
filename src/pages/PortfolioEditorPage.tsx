@@ -299,13 +299,6 @@ const PortfolioEditorPage: React.FC = () => {
         </section>
 
         <aside className="portfolio-editor-sidebar">
-          <section className="surface preview-panel">
-            <h2 className="section-title">Live preview</h2>
-            <p className="section-subtitle">Refresh to regenerate the layout from your current settings.</p>
-            <div className="preview-panel__frame">
-              <div dangerouslySetInnerHTML={{ __html: previewMarkup }} />
-            </div>
-          </section>
 
           {statusMessage ? (
             <section className="status-banner">
@@ -314,6 +307,15 @@ const PortfolioEditorPage: React.FC = () => {
             </section>
           ) : null}
         </aside>
+
+        {/* Live Preview - Full Width Section at Bottom */}
+        <section className="surface preview-panel preview-panel--full-width">
+          <h2 className="section-title">Live preview</h2>
+          <p className="section-subtitle">Refresh to regenerate the layout from your current settings.</p>
+          <div className="preview-panel__frame">
+            <div dangerouslySetInnerHTML={{ __html: previewMarkup }} />
+          </div>
+        </section>
       </main>
     </div>
   )
