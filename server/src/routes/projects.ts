@@ -56,8 +56,8 @@ const routerFactory = (upload: multer.Multer) => {
       const where: Parameters<typeof prisma.project.findMany>[0]['where'] = {
         OR: search
           ? [
-              { title: { contains: search, mode: 'insensitive' } },
-              { organization: { contains: search, mode: 'insensitive' } },
+              { title: { contains: search } },
+              { organization: { contains: search } },
               { tags: { has: search.toLowerCase() } },
             ]
           : undefined,

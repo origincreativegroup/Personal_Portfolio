@@ -10,7 +10,7 @@ import ProjectSyncService from './services/projectSyncService';
 import ProjectIntakeService from './services/projectIntakeService';
 import { registerProjectSyncScheduler } from './jobs/projectSyncScheduler';
 import { createAnalysisQueue } from './jobs/analysisQueue';
-import './types/express'; // Import Express type extensions
+// Import Express type extensions (used for TypeScript compilation only)
 
 const app = express();
 const prisma = new PrismaClient();

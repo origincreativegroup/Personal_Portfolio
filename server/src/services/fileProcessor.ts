@@ -95,9 +95,9 @@ export class FileProcessor {
         data: {
           status: 'completed',
           contentType: file.mimeType,
-          insights,
+          insights: insights as any,
           extractedText,
-          metadata,
+          metadata: metadata as any,
           processingTime
         }
       });

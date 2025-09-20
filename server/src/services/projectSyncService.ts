@@ -463,9 +463,10 @@ export class ProjectSyncService {
       syncWarnings: warnings.length > 0 ? warnings : null,
     };
 
-    let persisted = existing;
+    let persistedId: string;
     if (!existing) {
-      persisted = await this.prisma.project.create({ data: baseData });
+      const created = await this.prisma.project.create({ data: baseData });
+      persistedId = created.id;
     } else {
       const isMetadataChanged = existing.metadataChecksum !== project.metadataChecksum;
       const isBriefChanged = existing.briefChecksum !== project.briefChecksum;
@@ -475,20 +476,21 @@ export class ProjectSyncService {
         syncStatus = 'filesystem-updated';
       }
 
-      persisted = await this.prisma.project.update({
+      const updated = await this.prisma.project.update({
         where: { id: existing.id },
         data: {
           ...baseData,
           syncStatus,
         },
       });
+      persistedId = updated.id;
     }
 
-    await this.syncAssets(persisted.id, project.assets);
-    await this.syncDeliverables(persisted.id, project.deliverables);
+    await this.syncAssets(persistedId, project.assets);
+    await this.syncDeliverables(persistedId, project.deliverables);
 
     const refreshed = await this.prisma.project.findUnique({
-      where: { id: persisted!.id },
+      where: { id: persistedId },
       include: { assets: true, deliverables: true },
     });
 
