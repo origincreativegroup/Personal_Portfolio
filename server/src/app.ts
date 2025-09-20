@@ -32,7 +32,7 @@ app.use((req, _res, next) => {
   const devUserId = process.env.DEV_USER_ID ?? (process.env.NODE_ENV !== 'production' ? 'demo-user' : undefined);
 
   if (headerUserId || devUserId) {
-    req.user = {
+    (req as any).user = {
       id: headerUserId ?? devUserId!,
     };
   }
