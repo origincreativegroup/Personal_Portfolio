@@ -9,6 +9,7 @@ import intakeRoutes from './routes/intake';
 import ProjectSyncService from './services/projectSyncService';
 import ProjectIntakeService from './services/projectIntakeService';
 import { registerProjectSyncScheduler } from './jobs/projectSyncScheduler';
+import { createAnalysisQueue } from './jobs/analysisQueue';
 import './types/express'; // Import Express type extensions
 
 const app = express();
@@ -16,10 +17,12 @@ const prisma = new PrismaClient();
 const projectRoot = process.env.PROJECTS_ROOT ?? path.resolve(__dirname, '../..', 'projects');
 const projectSyncService = new ProjectSyncService(prisma, { projectRoot });
 const projectIntakeService = new ProjectIntakeService({ projectRoot, syncService: projectSyncService });
+const analysisQueue = createAnalysisQueue({ prisma });
 
 app.locals.projectSyncService = projectSyncService;
 app.locals.prisma = prisma;
 app.locals.projectIntakeService = projectIntakeService;
+app.locals.analysisQueue = analysisQueue;
 
 app.use(cors());
 app.use(express.json());

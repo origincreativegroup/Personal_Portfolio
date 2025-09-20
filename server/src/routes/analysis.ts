@@ -1,6 +1,6 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import { analysisQueue } from '../jobs/analysisQueue';
+import type { PrismaClient } from '@prisma/client';
+import type { Queue as BullQueue } from 'bull';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const ensureStringArray = (value: unknown): string[] => {
@@ -161,11 +161,37 @@ const normalizeInsights = (value: unknown): SerializedInsight[] => {
     .filter((entry): entry is SerializedInsight => entry !== null);
 };
 
+type AppLocals = {
+  prisma?: PrismaClient;
+  analysisQueue?: BullQueue;
+};
+
+const resolvePrisma = (req: express.Request): PrismaClient => {
+  const { prisma } = req.app.locals as AppLocals;
+
+  if (!prisma) {
+    throw new Error('Prisma client has not been initialised');
+  }
+
+  return prisma;
+};
+
+const resolveAnalysisQueue = (req: express.Request): BullQueue => {
+  const { analysisQueue } = req.app.locals as AppLocals;
+
+  if (!analysisQueue) {
+    throw new Error('Analysis queue has not been initialised');
+  }
+
+  return analysisQueue;
+};
+
 const router = express.Router();
-const prisma = new PrismaClient();
 
 router.post('/projects/:projectId/analyze', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
+    const prisma = resolvePrisma(req);
+    const analysisQueue = resolveAnalysisQueue(req);
     const { projectId } = req.params;
     const userId = req.user!.id;
 
@@ -214,6 +240,7 @@ router.post('/projects/:projectId/analyze', requireAuth, async (req: Authenticat
 
 router.get('/projects/:projectId/analysis', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
+    const prisma = resolvePrisma(req);
     const { projectId } = req.params;
     const userId = req.user!.id;
 
@@ -302,6 +329,7 @@ router.get('/projects/:projectId/analysis', requireAuth, async (req: Authenticat
 
 router.get('/projects/:projectId/analysis/results', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
+    const prisma = resolvePrisma(req);
     const { projectId } = req.params;
     const userId = req.user!.id;
 
@@ -372,6 +400,7 @@ router.get('/projects/:projectId/analysis/results', requireAuth, async (req: Aut
 
 router.post('/projects/:projectId/analysis/apply', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
+    const prisma = resolvePrisma(req);
     const { projectId } = req.params;
     const userId = req.user!.id;
     const { suggestions } = req.body as { suggestions: { title?: string; category?: string; description?: string } };

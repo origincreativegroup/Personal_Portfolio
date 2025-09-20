@@ -1,29 +1,39 @@
 import Queue from 'bull';
+import type { Queue as BullQueue } from 'bull';
+import type { PrismaClient } from '@prisma/client';
 import { FileProcessor } from '../services/fileProcessor';
 import { AIAnalysisService } from '../services/aiAnalysis';
 
-const analysisQueue = new Queue('analysis processing', process.env.REDIS_URL || 'redis://localhost:6379');
-const fileProcessor = new FileProcessor();
-const aiAnalysisService = new AIAnalysisService();
+export type AnalysisQueue = BullQueue;
 
-analysisQueue.process('analyze-file', async (job) => {
-  const { fileId } = job.data as { fileId: string };
+export type CreateAnalysisQueueOptions = {
+  prisma: PrismaClient;
+};
 
-  job.progress(0);
-  await fileProcessor.processFile(fileId);
-  job.progress(100);
+export const createAnalysisQueue = ({ prisma }: CreateAnalysisQueueOptions): AnalysisQueue => {
+  const queue: AnalysisQueue = new Queue('analysis processing', process.env.REDIS_URL || 'redis://localhost:6379');
+  const fileProcessor = new FileProcessor({ prisma });
+  const aiAnalysisService = new AIAnalysisService({ prisma });
 
-  return { fileId, status: 'completed' };
-});
+  queue.process('analyze-file', async job => {
+    const { fileId } = job.data as { fileId: string };
 
-analysisQueue.process('analyze-project', async (job) => {
-  const { projectId } = job.data as { projectId: string };
+    job.progress(0);
+    await fileProcessor.processFile(fileId);
+    job.progress(100);
 
-  job.progress(0);
-  const result = await aiAnalysisService.analyzeProject(projectId);
-  job.progress(100);
+    return { fileId, status: 'completed' as const };
+  });
 
-  return { projectId, status: 'completed', result };
-});
+  queue.process('analyze-project', async job => {
+    const { projectId } = job.data as { projectId: string };
 
-export { analysisQueue };
+    job.progress(0);
+    const result = await aiAnalysisService.analyzeProject(projectId);
+    job.progress(100);
+
+    return { projectId, status: 'completed' as const, result };
+  });
+
+  return queue;
+};
