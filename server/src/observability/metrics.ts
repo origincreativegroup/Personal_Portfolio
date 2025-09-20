@@ -138,7 +138,7 @@ export const getMetricsSnapshot = async (): Promise<string> => {
     const [queueName, jobName, status] = key.split('::')
     let cumulative = 0
     for (const bucket of DURATION_BUCKETS) {
-      cumulative = record.buckets.get(bucket) ?? cumulative
+      cumulative += record.buckets.get(bucket) ?? 0
       const labels = formatLabels({ queue: queueName, job_name: jobName, status, le: bucket.toString() })
       lines.push(`analysis_job_duration_seconds_bucket${labels} ${cumulative}`)
     }
