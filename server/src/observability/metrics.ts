@@ -35,7 +35,7 @@ const escapeLabelValue = (value: string): string =>
     .replace(/\n/g, '\\n')
     .replace(/"/g, '\\"')
 
-const isValidPrometheusLabelKey = (key: string): boolean => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key);
+const isValidPrometheusLabelKey = (key: string): boolean => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)
 
 const formatLabels = (labels: Record<string, string>): string => {
   const entries = Object.entries(labels)
