@@ -1,19 +1,18 @@
 {
-  "extends": "./tsconfig.node.json",
   "compilerOptions": {
     "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "moduleResolution": "Node",
+    "strict": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    "baseUrl": ".",
+    "paths": {
+      "@portfolioforge/schemas": ["packages/schemas/src"],
+      "@portfolioforge/ui": ["packages/ui/src"]
+    }
   },
-  "include": ["src"]
+  "include": []
 }

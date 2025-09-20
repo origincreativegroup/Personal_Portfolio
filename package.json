@@ -1,33 +1,25 @@
 {
-  "name": "portfolio-intake",
-  "version": "0.0.1",
+  "name": "portfolioforge-monorepo",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@10.8.2",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "test": "node --loader ./scripts/ts-loader.mjs --test tests/*.test.ts*",
-    "start": "./start-macos.sh",
-    "start:frontend": "npm run dev",
-    "start:backend": "cd server && npm run dev",
-    "build:backend": "cd server && npm run build",
-    "build:all": "npm run build:backend && npm run build",
-    "install:all": "npm install && cd server && npm install",
-    "clean": "rm -rf node_modules dist server/node_modules server/dist",
-    "setup": "npm run install:all && cd server && npx prisma generate && npx prisma db push --accept-data-loss && cd .. && npm run build:backend"
+    "dev": "concurrently -k \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace @portfolioforge/api",
+    "dev:web": "npm run dev --workspace @portfolioforge/web",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "seed": "npm run seed --workspace @portfolioforge/api"
   },
-  "dependencies": {
-    "lucide-react": "^0.453.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
-  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.8"
+    "concurrently": "^9.0.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
   }
 }

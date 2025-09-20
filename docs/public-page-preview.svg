@@ -1,0 +1,7 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="public page preview mock">
+  <rect width="640" height="360" fill="#ffffff" stroke="#cbc0ff" stroke-width="4" rx="24"/>
+  <rect x="32" y="32" width="576" height="72" fill="#ffffff" stroke="#5a3cf4" stroke-width="2" rx="18"/>
+  <rect x="32" y="120" width="576" height="200" fill="#ffffff" stroke="#cbc0ff" stroke-width="2" rx="18"/>
+  <text x="48" y="72" font-family="Inter, sans-serif" font-size="18" fill="#5a3cf4">published project</text>
+  <text x="48" y="158" font-family="Inter, sans-serif" font-size="14" fill="#1a1a1a">clean case study blocks rendered for sharing</text>
+</svg>

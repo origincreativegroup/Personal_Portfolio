@@ -1,0 +1,9 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="editor preview mock">
+  <rect width="640" height="360" fill="#ffffff" stroke="#cbc0ff" stroke-width="4" rx="24"/>
+  <rect x="24" y="24" width="160" height="312" fill="#f5f2ff" stroke="#5a3cf4" stroke-width="2" rx="16"/>
+  <rect x="208" y="24" width="408" height="160" fill="#ffffff" stroke="#cbc0ff" stroke-dasharray="8 8" stroke-width="2" rx="16"/>
+  <rect x="208" y="200" width="408" height="136" fill="#ffffff" stroke="#cbc0ff" stroke-width="2" rx="16"/>
+  <text x="40" y="60" font-family="Inter, sans-serif" font-size="14" fill="#1a1a1a">block toolbar</text>
+  <text x="224" y="60" font-family="Inter, sans-serif" font-size="14" fill="#1a1a1a">grapesjs canvas</text>
+  <text x="224" y="232" font-family="Inter, sans-serif" font-size="14" fill="#1a1a1a">preview + ai helpers</text>
+</svg>
