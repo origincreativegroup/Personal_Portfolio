@@ -1,4 +1,4 @@
-import type { PortfolioDocument } from './portfolioTemplates'
+import type { PortfolioDocument, PortfolioSettings } from './portfolioTemplates'
 
 const STORAGE_KEY = 'portfolio-forge-document'
 
@@ -23,6 +23,7 @@ export const loadPortfolioDocument = (): StoredPortfolioDocument | null => {
       html: parsed.html,
       css: parsed.css,
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+      settings: isValidSettings(parsed.settings) ? parsed.settings : undefined,
     }
   } catch (error) {
     console.warn('Failed to parse stored portfolio document', error)
@@ -38,8 +39,23 @@ export const savePortfolioDocument = (document: PortfolioDocument): void => {
     html: document.html,
     css: document.css,
     updatedAt: new Date().toISOString(),
+    settings: document.settings,
   }
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+}
+
+const isValidSettings = (value: unknown): value is PortfolioSettings => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const candidate = value as PortfolioSettings
+  if (typeof candidate.title !== 'string' || typeof candidate.subtitle !== 'string' || typeof candidate.introduction !== 'string') {
+    return false
+  }
+  if (!Array.isArray(candidate.featuredProjectSlugs)) {
+    return false
+  }
+  return true
 }
 
 export const clearPortfolioDocument = (): void => {
