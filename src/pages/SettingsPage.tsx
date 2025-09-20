@@ -102,7 +102,7 @@ const SettingsPage = () => {
     }
   };
 
-  const handleSaveSettings = (section) => {
+  const handleSaveSettings = (section: string) => {
     setSaveStatus('saving');
     // Simulate save operation
     setTimeout(() => {

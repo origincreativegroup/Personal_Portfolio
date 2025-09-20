@@ -6,16 +6,26 @@ import {
   Eye, Download, Settings, ChevronDown, X, AlertCircle,
   HelpCircle, BookOpen, Layout
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { newProject } from '../intake/schema';
 import { buildCaseStudyTemplate } from '../utils/caseStudyTemplates';
 import { saveProject } from '../utils/storageManager';
 
+interface ProjectCategory {
+  id: string;
+  name: string;
+  icon: LucideIcon;
+  description: string;
+  color: string;
+  templates: string[];
+}
+
 const NewIntakePage = () => {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
-  const [showTemplateDetails, setShowTemplateDetails] = useState(null);
+  const [showTemplateDetails, setShowTemplateDetails] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     projectName: '',
     description: '',
@@ -23,11 +33,11 @@ const NewIntakePage = () => {
     template: '',
     color: '#5a3cf4',
     visibility: 'public',
-    tags: [],
-    files: []
+    tags: [] as string[],
+    files: [] as File[]
   });
 
-  const projectCategories = [
+  const projectCategories: ProjectCategory[] = [
     {
       id: 'web-development',
       name: 'Web Development',
@@ -83,12 +93,12 @@ const NewIntakePage = () => {
     '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
   ];
 
-  const handleCategorySelect = (category) => {
+  const handleCategorySelect = (category: ProjectCategory) => {
     setFormData(prev => ({ ...prev, category: category.id }));
     setActiveStep(2);
   };
 
-  const handleTemplateSelect = (template) => {
+  const handleTemplateSelect = (template: string) => {
     setFormData(prev => ({ ...prev, template }));
     setActiveStep(3);
   };
