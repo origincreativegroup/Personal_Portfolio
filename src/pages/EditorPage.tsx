@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import ProjectFileExplorer from '../components/ProjectFileExplorer'
-import ProjectAssetEditor from '../components/projectdash'
 import EnhancedAssetManager from '../components/EnhancedAssetManager'
 import ProjectEditor from '../components/ProjectEditor'
 import { loadProject, saveProject, deleteProject } from '../utils/storageManager'
@@ -625,16 +623,6 @@ export default function EditorPage() {
           />
         </section>
 
-        <section className="editor-page__card editor-page__card--files">
-          <ProjectFileExplorer 
-            projectSlug={slug} 
-            projectTitle={project.title}
-            assets={project.assets}
-            onAssetUpload={handleAssetUpload}
-            onAssetRemove={handleAssetRemove}
-            onAssetUpdate={handleAssetUpdate}
-          />
-        </section>
 
         <section className="editor-page__card editor-page__card--editor">
           <ProjectEditor project={project} onUpdateProject={handleProjectUpdate} />

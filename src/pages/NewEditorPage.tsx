@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button, Input } from '../components/ui'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import EnhancedAssetManager from '../components/EnhancedAssetManager'
 import type { CaseStudyContent, ProjectAsset, ProjectMeta } from '../intake/schema'
 import { newProject } from '../intake/schema'
 import { loadProject, saveProject } from '../utils/storageManager'
@@ -177,6 +178,46 @@ const NewEditorPage: React.FC = () => {
       })),
     )
   }
+
+  // Adapter functions for EnhancedAssetManager compatibility
+  const handleAssetUpdate = (assetId: string, updates: Partial<ProjectAsset>) => {
+    setAssets(previous =>
+      previous.map(asset =>
+        asset.id === assetId ? { ...asset, ...updates } : asset
+      )
+    )
+  }
+
+  const handleAssetReorder = (assetId: string, direction: 'up' | 'down') => {
+    setAssets(previous => {
+      const index = previous.findIndex(asset => asset.id === assetId)
+      if (index === -1) return previous
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= previous.length) return previous
+
+      const reordered = [...previous]
+      const [moved] = reordered.splice(index, 1)
+      reordered.splice(targetIndex, 0, moved)
+      return reordered
+    })
+  }
+
+  const handleHeroSelect = (assetId: string | null) => {
+    setAssets(previous =>
+      previous.map(asset => ({
+        ...asset,
+        isHeroImage: asset.id === assetId,
+      }))
+    )
+  }
+
+  const handleAssetUploadForManager = (files: FileList) => {
+    handleAssetUpload({ target: { files } } as React.ChangeEvent<HTMLInputElement>)
+  }
+
+  // Get the current hero asset ID
+  const heroAssetId = assets.find(asset => asset.isHeroImage)?.id || null
 
   const handleGenerateNarrative = async () => {
     if (!project || !caseStudy) {
@@ -479,48 +520,21 @@ const NewEditorPage: React.FC = () => {
 
         <aside className="editor-sidebar">
           <section className="surface">
-            <h2 className="section-title">Assets</h2>
-            <p className="section-subtitle">Select a hero image and keep supporting visuals close at hand.</p>
+            <h2 className="section-title">Asset Management</h2>
+            <p className="section-subtitle">Manage your project assets with bulk operations and hero image selection.</p>
 
-            <label className="upload-dropzone" style={{ marginTop: '1rem' }}>
-              <input type="file" accept="image/*" multiple className="sr-only" onChange={handleAssetUpload} />
-              <Image className="h-6 w-6" />
-              <span>Drop imagery or <strong>browse</strong></span>
-            </label>
-
-            {assets.length > 0 ? (
-              <ul className="asset-list" style={{ marginTop: '1rem' }}>
-                {assets.map(asset => (
-                  <li key={asset.id} className="asset-list__item">
-                    <div className="asset-list__meta">
-                      <span className="asset-list__name">{asset.name}</span>
-                      <span className="asset-list__type">{asset.mimeType}</span>
-                    </div>
-                    <div className="button-row">
-                      <Button
-                        variant={asset.isHeroImage ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSetHero(asset.id)}
-                      >
-                        {asset.isHeroImage ? 'Hero image' : 'Set hero'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        leftIcon={<Trash2 className="h-4 w-4" />}
-                        onClick={() => handleRemoveAsset(asset.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="form-control__helper" style={{ marginTop: '1rem' }}>
-                No assets yet. Upload hero imagery or screenshots to enhance the case study.
-              </p>
-            )}
+            <div style={{ marginTop: '1rem' }}>
+              <EnhancedAssetManager
+                assets={assets}
+                heroAssetId={heroAssetId}
+                onAssetUpdate={handleAssetUpdate}
+                onAssetRemove={handleRemoveAsset}
+                onAssetReorder={handleAssetReorder}
+                onHeroSelect={handleHeroSelect}
+                onAssetUpload={handleAssetUploadForManager}
+                isDarkMode={false}
+              />
+            </div>
           </section>
 
 
