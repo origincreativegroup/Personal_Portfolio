@@ -255,22 +255,14 @@ export class QueueMonitor {
   process(name: string, concurrency: number, handler: ProcessPromiseFunction<unknown>): void
   process(name: string, concurrencyOrHandler: number | ProcessPromiseFunction<unknown>, maybeHandler?: ProcessPromiseFunction<unknown>): void {
     if (typeof concurrencyOrHandler === 'number' && maybeHandler) {
-      this.queue.process(name, concurrencyOrHandler, this.wrapHandler(name, maybeHandler))
+      this.queue.process(name, concurrencyOrHandler, maybeHandler)
       return
     }
 
     if (typeof concurrencyOrHandler === 'function') {
-      this.queue.process(name, this.wrapHandler(name, concurrencyOrHandler))
+      this.queue.process(name, concurrencyOrHandler)
     }
   }
 
-  private wrapHandler(name: string, handler: ProcessPromiseFunction<unknown>): ProcessPromiseFunction<unknown> {
-    return async job => {
-      try {
-        await handler(job)
-      } catch (error) {
-        throw error
-      }
-    }
-  }
+  // wrapHandler removed as it was unnecessary
 }
