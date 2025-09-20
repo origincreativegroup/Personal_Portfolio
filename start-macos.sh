@@ -22,6 +22,17 @@ INFO="ℹ️"
 GEAR="⚙️"
 SPARKLES="✨"
 
+# Resolve project paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+FRONTEND_DIR="$PROJECT_ROOT"
+if [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
+    FRONTEND_DIR="$PROJECT_ROOT/portfolio-intake"
+fi
+FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
+
+cd "$PROJECT_ROOT"
+
 # Function to print styled output
 print_header() {
     echo ""
@@ -104,15 +115,18 @@ install_dependencies() {
     print_step "Installing dependencies..."
 
     # Frontend dependencies
-    if [ ! -d "node_modules" ]; then
-        print_info "Installing frontend dependencies..."
+    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+        print_info "Installing frontend dependencies for $FRONTEND_NAME..."
+        pushd "$FRONTEND_DIR" >/dev/null
         npm install --silent
         if [ $? -eq 0 ]; then
             print_success "Frontend dependencies installed"
         else
             print_error "Failed to install frontend dependencies"
+            popd >/dev/null
             exit 1
         fi
+        popd >/dev/null
     else
         print_success "Frontend dependencies already installed"
     fi
@@ -227,16 +241,18 @@ start_backend() {
 
 # Function to start frontend
 start_frontend() {
-    print_step "Starting frontend development server..."
+    print_step "Starting frontend development server from $FRONTEND_NAME..."
 
     kill_port 5173
 
     # Create logs directory if it doesn't exist
-    mkdir -p logs
+    mkdir -p "$PROJECT_ROOT/logs"
 
     # Start frontend with logging
-    npm run dev > logs/frontend.log 2>&1 &
+    pushd "$FRONTEND_DIR" >/dev/null
+    npm run dev > "$PROJECT_ROOT/logs/frontend.log" 2>&1 &
     FRONTEND_PID=$!
+    popd >/dev/null
     print_success "Frontend started (PID: $FRONTEND_PID)"
 
     # Wait and verify
@@ -375,7 +391,7 @@ show_logs() {
 clean_install() {
     print_warning "Performing clean installation..."
     print_step "Removing node_modules directories..."
-    rm -rf node_modules server/node_modules server/dist
+    rm -rf "$FRONTEND_DIR/node_modules" node_modules server/node_modules server/dist
     print_success "Cleanup complete"
     install_dependencies
     build_backend
@@ -393,6 +409,8 @@ main() {
     clear
 
     print_header "${SPARKLES} Portfolio Forge - macOS Edition"
+
+    print_info "Frontend workspace: $FRONTEND_NAME ($FRONTEND_DIR)"
 
     # Check prerequisites
     check_prerequisites

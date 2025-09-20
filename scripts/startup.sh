@@ -2,6 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FRONTEND_DIR="$ROOT_DIR"
+if [[ -f "$ROOT_DIR/portfolio-intake/package.json" ]]; then
+  FRONTEND_DIR="$ROOT_DIR/portfolio-intake"
+fi
+FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
 FRONTEND_ONLY=0
 SKIP_INSTALL=0
 USE_DOCKER=1
@@ -65,9 +70,18 @@ done
 
 require_command npm
 
+echo "Using front-end workspace: $FRONTEND_NAME ($FRONTEND_DIR)"
+
 if [[ "$SKIP_INSTALL" -ne 1 ]]; then
-  echo "Installing front-end dependencies..."
-  (cd "$ROOT_DIR" && npm install)
+  echo "Installing front-end dependencies from $FRONTEND_NAME..."
+  (cd "$FRONTEND_DIR" && npm install)
+
+  if [[ "$FRONTEND_DIR" != "$ROOT_DIR" ]]; then
+    if [[ -f "$ROOT_DIR/package.json" ]]; then
+      echo "Installing root workspace dependencies..."
+      (cd "$ROOT_DIR" && npm install)
+    fi
+  fi
 
   if [[ "$FRONTEND_ONLY" -ne 1 ]]; then
     echo "Installing backend dependencies..."
@@ -113,8 +127,8 @@ if [[ "$FRONTEND_ONLY" -ne 1 ]]; then
   sleep 2
 fi
 
-echo "Starting front-end on http://localhost:5173 ..."
-cd "$ROOT_DIR"
+echo "Starting front-end on http://localhost:5173 using $FRONTEND_NAME ..."
+cd "$FRONTEND_DIR"
 npm run dev -- --host 0.0.0.0
 
 if [[ "$FRONTEND_ONLY" -ne 1 && -n "${BACKEND_PID:-}" ]]; then

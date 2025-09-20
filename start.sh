@@ -3,6 +3,16 @@
 # Portfolio Forge - Startup Script
 # This script starts both the frontend and backend services
 
+# Resolve project paths
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRONTEND_DIR="$PROJECT_ROOT"
+if [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
+    FRONTEND_DIR="$PROJECT_ROOT/portfolio-intake"
+fi
+FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
+
+cd "$PROJECT_ROOT"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -77,9 +87,13 @@ install_dependencies() {
     print_status "Checking and installing dependencies..."
 
     # Frontend dependencies
-    if [ ! -d "node_modules" ]; then
-        print_status "Installing frontend dependencies..."
+    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+        print_status "Installing frontend dependencies from $FRONTEND_NAME..."
+        pushd "$FRONTEND_DIR" >/dev/null
         npm install
+        popd >/dev/null
+    else
+        print_status "Frontend dependencies already installed for $FRONTEND_NAME"
     fi
 
     # Backend dependencies
@@ -145,14 +159,16 @@ start_backend() {
 
 # Function to start the frontend
 start_frontend() {
-    print_status "Starting frontend development server..."
+    print_status "Starting frontend development server from $FRONTEND_NAME..."
 
     # Kill any existing process on port 5173
     kill_port 5173
 
     # Start frontend in the background
+    pushd "$FRONTEND_DIR" >/dev/null
     npm run dev &
     FRONTEND_PID=$!
+    popd >/dev/null
     print_success "Frontend server starting on port 5173 (PID: $FRONTEND_PID)"
 
     # Wait a moment for the server to start
@@ -227,6 +243,9 @@ main() {
 
     print_header "🎨 Portfolio Forge Startup Script"
     print_header "=================================="
+    echo ""
+
+    print_status "Using frontend workspace: $FRONTEND_NAME ($FRONTEND_DIR)"
     echo ""
 
     # Check prerequisites
