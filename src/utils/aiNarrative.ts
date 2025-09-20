@@ -116,8 +116,56 @@ export const generateCaseStudyNarrative = async (
   })
 
   if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(`Failed to generate narrative: ${detail || response.statusText}`)
+    let detail: string | null = null
+    try {
+      detail = await response.text()
+    } catch (_error) {
+      detail = null
+    }
+
+    const buildErrorMessage = (): string => {
+      if (detail) {
+        try {
+          const parsed = JSON.parse(detail) as {
+            error?: { message?: string | null; code?: string | null }
+          }
+          const code = parsed.error?.code ?? undefined
+          const message = parsed.error?.message?.trim() ?? ''
+
+          if (code === 'invalid_api_key' || /incorrect api key/i.test(message)) {
+            return 'OpenAI rejected the API key. Double-check it in the OpenAI settings and try again.'
+          }
+
+          if (message) {
+            return `OpenAI error: ${message}`
+          }
+        } catch (_error) {
+          // If the response isn't JSON, fall back to the raw string below.
+        }
+
+        const trimmed = detail.trim()
+        if (trimmed) {
+          return `Failed to generate narrative: ${trimmed}`
+        }
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return 'OpenAI rejected the request. Please ensure your API key is valid and try again.'
+      }
+
+      return `Failed to generate narrative: ${response.statusText || response.status}`
+    }
+
+    const errorMessage = buildErrorMessage()
+    if (detail) {
+      console.error('OpenAI narrative generation failed', {
+        status: response.status,
+        statusText: response.statusText,
+        detail,
+      })
+    }
+
+    throw new Error(errorMessage)
   }
 
   const payload = (await response.json()) as RawCompletion
