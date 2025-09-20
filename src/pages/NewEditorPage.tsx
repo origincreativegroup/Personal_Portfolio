@@ -4,13 +4,13 @@ import {
   ArrowLeft,
   CheckCircle2,
   Image,
-  Loader2,
   RefreshCw,
   Save,
   Sparkles,
   Trash2,
 } from 'lucide-react'
 import { Button, Input } from '../components/ui'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
 import type { CaseStudyContent, ProjectAsset, ProjectMeta } from '../intake/schema'
 import { newProject } from '../intake/schema'
 import { loadProject, saveProject } from '../utils/storageManager'
@@ -277,17 +277,21 @@ const NewEditorPage: React.FC = () => {
 
   if (!project || !caseStudy) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Loading editor…
+      <div className="app-page">
+        <main
+          className="app-page__body"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}
+        >
+          <LoadingSpinner size="lg" text="Loading editor…" centered />
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="app-page editor-page">
+      <header className="app-page__header">
+        <div className="app-page__header-inner" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -297,14 +301,14 @@ const NewEditorPage: React.FC = () => {
               Dashboard
             </Button>
             <div>
-              <h1 className="text-xl font-semibold">Case study editor</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="section-title" style={{ marginBottom: '0.35rem' }}>Case study editor</h1>
+              <p className="section-subtitle">
                 Shape a concise narrative, manage assets, and preview the final layout.
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Last updated {formatDate(project.updatedAt)}</p>
+              <p className="form-control__helper">Last updated {formatDate(project.updatedAt)}</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="button-row">
             <Button
               variant="ghost"
               leftIcon={<RefreshCw className="h-4 w-4" />}
@@ -332,59 +336,59 @@ const NewEditorPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="space-y-6">
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Hero & summary</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Set the hook for the case study and tune the key metadata.</p>
+      <main className="app-page__body editor-layout">
+        <section className="editor-grid">
+          <article className="surface editor-card">
+            <h2 className="section-title">Hero & summary</h2>
+            <p className="section-subtitle">Set the hook for the case study and tune the key metadata.</p>
 
-            <div className="mt-6 space-y-4">
+            <div className="form-grid">
               <Input
                 label="Project title"
                 value={project.title}
                 onChange={event => setProject(previous => (previous ? { ...previous, title: event.target.value } : previous))}
                 fullWidth
               />
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Portfolio summary
+              <label className="form-control">
+                <span className="form-control__label">Portfolio summary</span>
                 <textarea
                   value={summary}
                   onChange={event => setSummary(event.target.value)}
                   rows={3}
                   placeholder="A concise one-liner to describe the project."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Hero narrative
+              <label className="form-control">
+                <span className="form-control__label">Hero narrative</span>
                 <textarea
                   value={overview}
                   onChange={event => setOverview(event.target.value)}
                   rows={3}
                   placeholder="Set the tone for the story with a short paragraph."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tags
+              <label className="form-control">
+                <span className="form-control__label">Tags</span>
                 <textarea
                   value={tagsInput}
                   onChange={event => setTagsInput(event.target.value)}
                   rows={2}
                   placeholder="product strategy, data visualisation, design systems"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Narrative detail</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">These sections drive the AI narrative and portfolio export.</p>
+          <article className="surface editor-card">
+            <h2 className="section-title">Narrative detail</h2>
+            <p className="section-subtitle">These sections drive the AI narrative and portfolio export.</p>
 
-            <div className="mt-6 space-y-5">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Challenge
+            <div className="form-grid">
+              <label className="form-control">
+                <span className="form-control__label">Challenge</span>
                 <textarea
                   value={problem}
                   onChange={event => {
@@ -393,11 +397,11 @@ const NewEditorPage: React.FC = () => {
                   }}
                   rows={3}
                   placeholder="What was the problem or opportunity?"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Approach (one point per line)
+              <label className="form-control">
+                <span className="form-control__label">Approach (one point per line)</span>
                 <textarea
                   value={approachText}
                   onChange={event => {
@@ -406,11 +410,11 @@ const NewEditorPage: React.FC = () => {
                   }}
                   rows={4}
                   placeholder={'Discovery workshops\nCustomer journey mapping\nIterative prototyping'}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea editor-textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Impact (one metric or story per line)
+              <label className="form-control">
+                <span className="form-control__label">Impact (one metric or story per line)</span>
                 <textarea
                   value={resultsText}
                   onChange={event => {
@@ -419,31 +423,31 @@ const NewEditorPage: React.FC = () => {
                   }}
                   rows={4}
                   placeholder={'30% uplift in activation\nShipped cross-team design system'}
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea editor-textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Solution summary
+              <label className="form-control">
+                <span className="form-control__label">Solution summary</span>
                 <textarea
                   value={solution}
                   onChange={event => setSolution(event.target.value)}
                   rows={3}
                   placeholder="How did you design, build, or facilitate the outcome?"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Outcomes & metrics
+              <label className="form-control">
+                <span className="form-control__label">Outcomes &amp; metrics</span>
                 <textarea
                   value={outcomes}
                   onChange={event => setOutcomes(event.target.value)}
                   rows={3}
                   placeholder="Key numbers, qualitative wins, or momentum unlocked."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Learnings
+              <label className="form-control">
+                <span className="form-control__label">Learnings</span>
                 <textarea
                   value={learnings}
                   onChange={event => {
@@ -452,11 +456,11 @@ const NewEditorPage: React.FC = () => {
                   }}
                   rows={3}
                   placeholder="Key lessons or reflections to carry into the next project."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Call to action
+              <label className="form-control">
+                <span className="form-control__label">Call to action</span>
                 <textarea
                   value={cta}
                   onChange={event => {
@@ -465,7 +469,7 @@ const NewEditorPage: React.FC = () => {
                   }}
                   rows={2}
                   placeholder="Let’s shape the next release together."
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="form-control__textarea"
                 />
               </label>
             </div>
@@ -473,31 +477,26 @@ const NewEditorPage: React.FC = () => {
 
         </section>
 
-        <aside className="space-y-6">
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Assets</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Select a hero image and keep supporting visuals close at hand.</p>
+        <aside className="editor-sidebar">
+          <section className="surface">
+            <h2 className="section-title">Assets</h2>
+            <p className="section-subtitle">Select a hero image and keep supporting visuals close at hand.</p>
 
-            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:border-indigo-500">
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleAssetUpload} />
+            <label className="upload-dropzone" style={{ marginTop: '1rem' }}>
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={handleAssetUpload} />
               <Image className="h-6 w-6" />
-              <span>Drop imagery or <span className="underline">browse</span></span>
+              <span>Drop imagery or <strong>browse</strong></span>
             </label>
 
             {assets.length > 0 ? (
-              <ul className="mt-4 space-y-3 text-sm">
+              <ul className="asset-list" style={{ marginTop: '1rem' }}>
                 {assets.map(asset => (
-                  <li
-                    key={asset.id}
-                    className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/70"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{asset.name}</p>
-                      <p className="truncate text-xs text-gray-500">
-                        {asset.mimeType}
-                      </p>
+                  <li key={asset.id} className="asset-list__item">
+                    <div className="asset-list__meta">
+                      <span className="asset-list__name">{asset.name}</span>
+                      <span className="asset-list__type">{asset.mimeType}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="button-row">
                       <Button
                         variant={asset.isHeroImage ? 'primary' : 'outline'}
                         size="sm"
@@ -518,29 +517,26 @@ const NewEditorPage: React.FC = () => {
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">No assets yet. Upload hero imagery or screenshots to enhance the case study.</p>
+              <p className="form-control__helper" style={{ marginTop: '1rem' }}>
+                No assets yet. Upload hero imagery or screenshots to enhance the case study.
+              </p>
             )}
           </section>
 
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-            <h2 className="text-lg font-semibold">Live preview</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Updated as you type. Export-ready HTML & CSS are saved locally.</p>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-900/80 p-4 shadow-inner dark:border-gray-700">
-              <div
-                className="max-h-[420px] overflow-y-auto rounded-xl bg-black/60 text-sm"
-                dangerouslySetInnerHTML={{ __html: previewMarkup }}
-              />
+          <section className="surface preview-panel">
+            <h2 className="section-title">Live preview</h2>
+            <p className="section-subtitle">Updated as you type. Export-ready HTML &amp; CSS are saved locally.</p>
+            <div className="preview-panel__frame">
+              <div dangerouslySetInnerHTML={{ __html: previewMarkup }} />
             </div>
           </section>
 
-          {statusMessage && (
-            <section className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-900 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
-              <p className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                {statusMessage}
-              </p>
+          {statusMessage ? (
+            <section className="status-banner">
+              <CheckCircle2 width={16} height={16} />
+              {statusMessage}
             </section>
-          )}
+          ) : null}
         </aside>
       </main>
     </div>

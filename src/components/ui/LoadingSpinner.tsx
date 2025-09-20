@@ -1,11 +1,18 @@
-import React, { useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import React from 'react'
+import { Loader2 } from 'lucide-react'
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
-  text?: string;
-  centered?: boolean;
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  className?: string
+  text?: string
+  centered?: boolean
+}
+
+const SIZE_MAP: Record<NonNullable<LoadingSpinnerProps['size']>, string> = {
+  sm: '1.1rem',
+  md: '1.5rem',
+  lg: '2rem',
+  xl: '2.75rem',
 }
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
@@ -14,42 +21,19 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   text,
   centered = false,
 }) => {
-  const sizeStyles = {
-    sm: 'h-4 w-4',
-    md: 'h-6 w-6',
-    lg: 'h-8 w-8',
-    xl: 'h-12 w-12',
-  };
+  const iconStyle: React.CSSProperties = {
+    width: SIZE_MAP[size],
+    height: SIZE_MAP[size],
+  }
 
-  const textSizeStyles = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg',
-    xl: 'text-xl',
-  };
-
-  const containerClasses = useMemo(() => centered
-    ? 'flex flex-col items-center justify-center min-h-32'
-    : 'flex items-center space-x-2', [centered]);
-
-  const spinnerClasses = useMemo(() => [
-    'animate-spin',
-    'text-primary-600',
-    'dark:text-primary-400',
-    sizeStyles[size],
-    className,
-  ].join(' '), [size, className]);
+  const containerClass = centered ? 'loading-spinner loading-spinner--centered' : 'loading-spinner'
 
   return (
-    <div className={containerClasses}>
-      <Loader2 className={spinnerClasses} />
-      {text && (
-        <span className={`text-gray-600 dark:text-gray-400 ${textSizeStyles[size]} ${centered ? 'mt-2' : ''}`}>
-          {text}
-        </span>
-      )}
+    <div className={`${containerClass} ${className}`.trim()}>
+      <Loader2 className="loading-spinner__icon" style={iconStyle} />
+      {text ? <span className="loading-spinner__text">{text}</span> : null}
     </div>
-  );
-};
+  )
+}
 
-export default React.memo(LoadingSpinner);
+export default React.memo(LoadingSpinner)

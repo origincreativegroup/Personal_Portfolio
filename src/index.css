@@ -1,5 +1,7 @@
 /* src/index.css */
 
+@import './styles/ui.css';
+
 /* CSS Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -2944,7 +2946,6 @@ input, textarea, select {
     right: 1.5rem;
     transform: none;
   }
-}
 
 /* Modal styles */
 .modal-overlay {
