@@ -566,7 +566,14 @@ router.get('/observability/summary', requireAuth, async (_req: AuthenticatedRequ
       analysisQueue.getWorkers().catch(() => [] as unknown[]),
     ]);
 
-    const clientStatus = (analysisQueue.client as unknown as { status?: string } | undefined)?.status;
+    // Type guard for client with status property
+    interface QueueClientWithStatus {
+      status?: string;
+    }
+    function hasStatus(obj: unknown): obj is QueueClientWithStatus {
+      return typeof obj === 'object' && obj !== null && 'status' in obj && (typeof (obj as any).status === 'string' || typeof (obj as any).status === 'undefined');
+    }
+    const clientStatus = hasStatus(analysisQueue.client) ? analysisQueue.client.status : undefined;
     const workerHealth = {
       isReady: clientStatus === 'ready' || clientStatus === 'connect',
       isPaused,
