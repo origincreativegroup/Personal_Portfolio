@@ -5,6 +5,7 @@ import { verifyAccessToken } from '../utils/tokenService';
 
 export interface AuthenticatedRequest extends Request {
   user?: NonNullable<Request['user']>;
+  workspace?: { id: string; role: WorkspaceRole };
 }
 
 const extractBearerToken = (headerValue: string | undefined): string | null => {
