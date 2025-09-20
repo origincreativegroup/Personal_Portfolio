@@ -1,6 +1,8 @@
 import React, { forwardRef, InputHTMLAttributes, useMemo } from 'react';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+type NativeInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>;
+
+interface InputProps extends NativeInputProps {
   label?: string;
   error?: string;
   helperText?: string;
