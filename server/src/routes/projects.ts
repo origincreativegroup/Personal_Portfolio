@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Express } from 'express';
 import type multer from 'multer';
 import { PrismaClient } from '@prisma/client';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
@@ -22,6 +23,28 @@ const resolveDependencies = (req: express.Request) => {
 
 const routerFactory = (upload: multer.Multer) => {
   const router = express.Router();
+  const archiveUpload = upload.fields([
+    { name: 'archive', maxCount: 1 },
+    { name: 'file', maxCount: 1 },
+  ]);
+
+  const resolveUploadedArchive = (req: express.Request): Express.Multer.File | undefined => {
+    if (req.file) {
+      return req.file;
+    }
+
+    const { files } = req;
+    if (!files) {
+      return undefined;
+    }
+
+    if (Array.isArray(files)) {
+      return files[0];
+    }
+
+    const typedFiles = files as Record<string, Express.Multer.File[]>;
+    return typedFiles.archive?.[0] ?? typedFiles.file?.[0];
+  };
 
   router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
@@ -112,14 +135,15 @@ const routerFactory = (upload: multer.Multer) => {
     }
   });
 
-  router.post('/import', requireAuth, upload.single('archive'), async (req: AuthenticatedRequest, res) => {
+  router.post('/import', requireAuth, archiveUpload, async (req: AuthenticatedRequest, res) => {
     try {
       const { service } = resolveDependencies(req);
-      if (!req.file?.buffer) {
+      const uploadedArchive = resolveUploadedArchive(req);
+      if (!uploadedArchive?.buffer) {
         res.status(400).json({ error: 'Missing archive upload' });
         return;
       }
-      const results = await service.importFromZip(req.file.buffer);
+      const results = await service.importFromZip(uploadedArchive.buffer);
       res.status(201).json({ imported: results.length, results });
     } catch (error) {
       console.error('Import failed', error);
