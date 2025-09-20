@@ -48,11 +48,8 @@ def main():
         raise SystemExit(f"Folder already exists: {proj}")
 
     # structure
-    ensure(proj / "assets/images")
-    ensure(proj / "assets/video")
-    ensure(proj / "assets/docs")
-    ensure(proj / "assets/other")
-    ensure(proj / "deliverables")
+    ensure(proj / "03_Assets")
+    ensure(proj / "06_Exports")
 
     # metadata
     categories = [s.strip() for s in args.categories.split(",") if s.strip()]
@@ -62,7 +59,7 @@ def main():
     highlights = [s.strip() for s in args.highlights.split(",") if s.strip()]
 
     metadata = {
-        "schema_version": "2.0.0",
+        "schema_version": "3.0.0",
         "title": args.title,
         "organization": args.organization,
         "work_type": args.work_type,
@@ -74,29 +71,57 @@ def main():
         "tools": tools,
         "tags": tags,
         "highlights": highlights,
-        "links": { "live": args.link_live, "repo": args.link_repo, "video": args.link_video },
+        "links": {
+            "live": args.link_live,
+            "repo": args.link_repo,
+            "video": args.link_video,
+        },
         "privacy": { "nda": bool(args.nda) },
-        "case": { "problem": "", "actions": "", "results": "" },
-        "cover_image": "",
-        "created_at": datetime.utcnow().isoformat() + "Z"
+        "pcsi": { "problem": "", "challenge": "", "solution": "", "impact": "" },
+        "case": { "problem": "", "challenge": "", "actions": "", "results": "" },
+        "cover_image": "06_Exports/cover.jpg",
+        "assets": [],
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
     }
-    write(proj / "metadata.json", json.dumps(metadata, indent=2))
+    write(proj / "02_Metadata.json", json.dumps(metadata, indent=2) + "\n")
+    write(proj / "metadata.json", json.dumps(metadata, indent=2) + "\n")
 
-    # brief.md
-    brief = [
+    # narrative
+    snapshot = []
+    if args.organization:
+        snapshot.append(f"- **Organization:** {args.organization}")
+    if args.role:
+        snapshot.append(f"- **Role:** {args.role} ({args.seniority})")
+    if categories:
+        snapshot.append(f"- **Categories:** {', '.join(categories)}")
+    if tools:
+        snapshot.append(f"- **Tools:** {', '.join(tools)}")
+
+    narrative = [
         f"# {args.title}",
         "",
-        f"**Organization:** {args.organization}  " if args.organization else "",
-        f"**Year:** {year}  ",
-        f"**Role:** {args.role} ({args.seniority})  " if args.role else "",
-        f"**Categories:** {', '.join(categories)}" if categories else "",
+        "## Problem",
+        "<What was broken or missing?>",
         "",
-        "## Problem", "*—*","",
-        "## Actions", "*—*","",
-        "## Results", "*—*","",
-        ("## Highlights\n- " + "\n- ".join(highlights)) if highlights else ""
+        "## Challenge",
+        "<Context or constraints you faced>",
+        "",
+        "## Solution",
+        "<What did you build or change?>",
+        "",
+        "## Impact",
+        "<How did things improve? Add data if possible.>",
     ]
-    write(proj / "brief.md", "\n".join([line for line in brief if line != ""]))
+
+    if snapshot:
+        narrative.extend(["", "### Project Snapshot", *snapshot])
+
+    if highlights:
+        narrative.extend(["", "### Highlights", *[f"- {item}" for item in highlights]])
+
+    write(proj / "01_Narrative.md", "\n".join(narrative) + "\n")
+    write(proj / "brief.md", "\n".join(narrative) + "\n")
 
     print(f"✅ Created {proj}")
 

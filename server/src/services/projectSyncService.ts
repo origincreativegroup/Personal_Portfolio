@@ -4,12 +4,14 @@ import crypto from 'crypto';
 import os from 'os';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
+import type { Stats } from 'fs';
 import { PrismaClient, Prisma, Project as ProjectModel } from '@prisma/client';
 import {
   FilesystemAsset,
   FilesystemDeliverable,
   FilesystemProject,
   ParsedMetadata,
+  ParsedMetadataLink,
   SyncConflict,
   SyncProjectResult,
   SyncSummary,
@@ -19,11 +21,25 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const METADATA_FILE = 'metadata.json';
-const BRIEF_FILE = 'brief.md';
+const METADATA_FILES = ['02_Metadata.json', 'metadata.json'];
+const BRIEF_FILES = ['01_Narrative.md', 'brief.md'];
 
-const ASSET_DIR = 'assets';
-const DELIVERABLE_DIR = 'deliverables';
+const ASSET_DIRS = ['03_Assets', 'assets'];
+const DELIVERABLE_DIRS = ['06_Exports', 'deliverables'];
+
+const findFirstExistingFile = async (
+  basePath: string,
+  candidates: string[],
+): Promise<{ path: string; stats: Stats } | null> => {
+  for (const candidate of candidates) {
+    const fullPath = path.join(basePath, candidate);
+    const stats = await fs.stat(fullPath).catch(() => null);
+    if (stats?.isFile()) {
+      return { path: fullPath, stats };
+    }
+  }
+  return null;
+};
 
 type SyncOptions = {
   projectRoot: string;
@@ -91,8 +107,84 @@ const normalizeOptionalString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const pickFirstString = (...candidates: unknown[]): string | undefined => {
+  for (const candidate of candidates) {
+    const value = normalizeOptionalString(candidate);
+    if (value) {
+      return value;
+    }
+  }
+  return undefined;
+};
+
+const normalizeLinkEntry = (entry: unknown, fallbackType?: string): ParsedMetadataLink | null => {
+  if (!entry) {
+    return null;
+  }
+
+  if (typeof entry === 'string') {
+    const url = normalizeOptionalString(entry);
+    if (!url) {
+      return null;
+    }
+    const result: ParsedMetadataLink = { url };
+    const inferredType = normalizeOptionalString(fallbackType);
+    if (inferredType) {
+      result.type = inferredType;
+    }
+    return result;
+  }
+
+  if (typeof entry === 'object') {
+    const data = entry as Record<string, unknown>;
+    const url = pickFirstString(data.url, data.href, data.link, data.value);
+    if (!url) {
+      return null;
+    }
+    const result: ParsedMetadataLink = { url };
+    const type = normalizeOptionalString(data.type) ?? normalizeOptionalString(fallbackType);
+    if (type) {
+      result.type = type;
+    }
+    const label = pickFirstString(data.label, data.title, data.name);
+    if (label) {
+      result.label = label;
+    }
+    return result;
+  }
+
+  return null;
+};
+
+const normalizeLinks = (value: unknown): ParsedMetadataLink[] => {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(entry => normalizeLinkEntry(entry))
+      .filter((entry): entry is ParsedMetadataLink => Boolean(entry));
+  }
+
+  if (typeof value === 'string') {
+    const single = normalizeLinkEntry(value);
+    return single ? [single] : [];
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => normalizeLinkEntry(entry, key))
+      .filter((entry): entry is ParsedMetadataLink => Boolean(entry));
+  }
+
+  return [];
+};
+
 export const parseMetadata = (metadata: Record<string, unknown>): ParsedMetadata => {
   const caseData = typeof metadata.case === 'object' && metadata.case !== null ? metadata.case as Record<string, unknown> : {};
+  const pcsiData = typeof metadata.pcsi === 'object' && metadata.pcsi !== null ? metadata.pcsi as Record<string, unknown> : {};
+  const links = normalizeLinks((metadata as Record<string, unknown>).links);
   return {
     schemaVersion: typeof metadata.schema_version === 'string' ? metadata.schema_version : undefined,
     title: typeof metadata.title === 'string' && metadata.title.trim().length > 0 ? metadata.title.trim() : 'Untitled Project',
@@ -111,24 +203,40 @@ export const parseMetadata = (metadata: Record<string, unknown>): ParsedMetadata
     tools: normalizeStringArray(metadata.tools),
     tags: normalizeStringArray(metadata.tags),
     highlights: normalizeStringArray(metadata.highlights),
-    links: typeof metadata.links === 'object' && metadata.links !== null ? metadata.links as Record<string, unknown> : null,
+    links,
     nda: typeof metadata === 'object' && metadata !== null
       ? Boolean((metadata.privacy as Record<string, unknown> | undefined)?.nda)
       : undefined,
     coverImage: normalizeOptionalString(metadata.cover_image),
     case: {
       problem: normalizeOptionalString(caseData.problem),
+      challenge: normalizeOptionalString(caseData.challenge),
       actions: normalizeOptionalString(caseData.actions),
       results: normalizeOptionalString(caseData.results),
+    },
+    pcsi: {
+      problem: normalizeOptionalString(pcsiData.problem),
+      challenge: normalizeOptionalString(pcsiData.challenge),
+      solution: normalizeOptionalString(pcsiData.solution),
+      impact: normalizeOptionalString(pcsiData.impact),
     },
   };
 };
 
 const inferAssetType = (relativePath: string): string => {
-  const directoryPart = relativePath.split(path.sep)[1] ?? '';
-  if (directoryPart.includes('image')) return 'image';
-  if (directoryPart.includes('video')) return 'video';
-  if (directoryPart.includes('doc')) return 'document';
+  const extension = path.extname(relativePath).toLowerCase();
+  if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tif', '.tiff', '.webp', '.svg', '.heic'].includes(extension)) {
+    return 'image';
+  }
+  if (['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.mpg', '.mpeg'].includes(extension)) {
+    return 'video';
+  }
+  if (['.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a'].includes(extension)) {
+    return 'audio';
+  }
+  if (['.pdf', '.ppt', '.pptx', '.key', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt', '.md'].includes(extension)) {
+    return 'document';
+  }
   return 'asset';
 };
 
@@ -152,51 +260,73 @@ const listFiles = async (baseDir: string): Promise<string[]> => {
   return files;
 };
 
-const mapAssets = async (projectPath: string, folderName: string): Promise<FilesystemAsset[]> => {
-  const basePath = path.join(projectPath, ASSET_DIR);
-  const exists = await fs.stat(basePath).then(stat => stat.isDirectory()).catch(() => false);
-  if (!exists) {
+const mapAssets = async (projectPath: string): Promise<FilesystemAsset[]> => {
+  const existingDirectories = await Promise.all(
+    ASSET_DIRS.map(async directory => {
+      const absolute = path.join(projectPath, directory);
+      const stats = await fs.stat(absolute).catch(() => null);
+      return stats?.isDirectory() ? absolute : null;
+    }),
+  );
+
+  const directories = existingDirectories.filter((value): value is string => Boolean(value));
+  if (directories.length === 0) {
     return [];
   }
-  const allFiles = await listFiles(basePath);
+
   const assets: FilesystemAsset[] = [];
-  for (const file of allFiles) {
-    const stats = await fs.stat(file);
-    const buffer = await fs.readFile(file);
-    const relativePath = path.relative(projectPath, file);
-    assets.push({
-      relativePath,
-      type: inferAssetType(relativePath),
-      size: stats.size,
-      checksum: computeChecksum(buffer),
-      lastModifiedAt: stats.mtime,
-      label: path.basename(file),
-    });
+  for (const directory of directories) {
+    const allFiles = await listFiles(directory);
+    for (const file of allFiles) {
+      const stats = await fs.stat(file);
+      const buffer = await fs.readFile(file);
+      const relativePath = path.relative(projectPath, file);
+      assets.push({
+        relativePath,
+        type: inferAssetType(relativePath),
+        size: stats.size,
+        checksum: computeChecksum(buffer),
+        lastModifiedAt: stats.mtime,
+        label: path.basename(file),
+      });
+    }
   }
+
   return assets;
 };
 
 const mapDeliverables = async (projectPath: string): Promise<FilesystemDeliverable[]> => {
-  const basePath = path.join(projectPath, DELIVERABLE_DIR);
-  const exists = await fs.stat(basePath).then(stat => stat.isDirectory()).catch(() => false);
-  if (!exists) {
+  const existingDirectories = await Promise.all(
+    DELIVERABLE_DIRS.map(async directory => {
+      const absolute = path.join(projectPath, directory);
+      const stats = await fs.stat(absolute).catch(() => null);
+      return stats?.isDirectory() ? absolute : null;
+    }),
+  );
+
+  const directories = existingDirectories.filter((value): value is string => Boolean(value));
+  if (directories.length === 0) {
     return [];
   }
-  const allFiles = await listFiles(basePath);
+
   const deliverables: FilesystemDeliverable[] = [];
-  for (const file of allFiles) {
-    const stats = await fs.stat(file);
-    const buffer = await fs.readFile(file);
-    const relativePath = path.relative(projectPath, file);
-    deliverables.push({
-      relativePath,
-      format: inferDeliverableFormat(relativePath),
-      size: stats.size,
-      checksum: computeChecksum(buffer),
-      lastModifiedAt: stats.mtime,
-      label: path.basename(file),
-    });
+  for (const directory of directories) {
+    const allFiles = await listFiles(directory);
+    for (const file of allFiles) {
+      const stats = await fs.stat(file);
+      const buffer = await fs.readFile(file);
+      const relativePath = path.relative(projectPath, file);
+      deliverables.push({
+        relativePath,
+        format: inferDeliverableFormat(relativePath),
+        size: stats.size,
+        checksum: computeChecksum(buffer),
+        lastModifiedAt: stats.mtime,
+        label: path.basename(file),
+      });
+    }
   }
+
   return deliverables;
 };
 
@@ -239,21 +369,22 @@ export class ProjectSyncService {
 
   async syncProject(folder: string): Promise<SyncProjectResult> {
     const projectPath = path.join(this.projectRoot, folder);
-    const metadataPath = path.join(projectPath, METADATA_FILE);
-    const briefPath = path.join(projectPath, BRIEF_FILE);
-
-    const metadataStats = await fs.stat(metadataPath).catch(() => null);
-    if (!metadataStats?.isFile()) {
-      throw new Error(`Project ${folder} is missing ${METADATA_FILE}`);
+    const metadataInfo = await findFirstExistingFile(projectPath, METADATA_FILES);
+    if (!metadataInfo) {
+      throw new Error(`Project ${folder} is missing metadata (${METADATA_FILES.join(', ')})`);
     }
 
+    const metadataPath = metadataInfo.path;
+    const metadataStats = metadataInfo.stats;
     const rawMetadata = await readJsonFile<Record<string, unknown>>(metadataPath);
     const parsedMetadata = parseMetadata(rawMetadata);
     const metadataBuffer = await fs.readFile(metadataPath);
 
-    const briefData = await readOptionalText(briefPath);
+    const briefInfo = await findFirstExistingFile(projectPath, BRIEF_FILES);
+    const briefPath = briefInfo?.path ?? path.join(projectPath, BRIEF_FILES[0]);
+    const briefData = briefInfo ? await readOptionalText(briefInfo.path) : null;
 
-    const assets = await mapAssets(projectPath, folder);
+    const assets = await mapAssets(projectPath);
     const deliverables = await mapDeliverables(projectPath);
 
     const fsLastModifiedCandidates = [metadataStats.mtime, ...assets.map(a => a.lastModifiedAt).filter(Boolean) as Date[]];
@@ -454,7 +585,12 @@ export class ProjectSyncService {
       throw error;
     }
 
-    const metadataPath = path.join(this.projectRoot, project.folder, METADATA_FILE);
+    const projectPath = path.join(this.projectRoot, project.folder);
+    const metadataInfo = await findFirstExistingFile(projectPath, METADATA_FILES);
+    const metadataPath = metadataInfo?.path ?? path.join(projectPath, METADATA_FILES[0]);
+    const legacyMetadataPath = path.join(projectPath, 'metadata.json');
+    const normalizedLinks = normalizeLinks(metadata.links ?? []);
+
     const payload = {
       schema_version: metadata.schemaVersion,
       title: metadata.title,
@@ -469,18 +605,30 @@ export class ProjectSyncService {
       tools: metadata.tools,
       tags: metadata.tags,
       highlights: metadata.highlights,
-      links: metadata.links ?? {},
+      links: normalizedLinks,
       privacy: { nda: metadata.nda ?? false },
       case: {
         problem: metadata.case?.problem ?? '',
+        challenge: metadata.case && 'challenge' in metadata.case ? (metadata.case as Record<string, unknown>).challenge ?? '' : '',
         actions: metadata.case?.actions ?? '',
         results: metadata.case?.results ?? '',
       },
+      pcsi: metadata.case
+        ? {
+            problem: metadata.case.problem ?? '',
+            challenge: (metadata.case as Record<string, unknown>).challenge ?? '',
+            solution: metadata.case.actions ?? '',
+            impact: metadata.case.results ?? '',
+          }
+        : undefined,
       cover_image: metadata.coverImage ?? '',
     };
 
     const buffer = Buffer.from(JSON.stringify(payload, null, 2), 'utf-8');
     await fs.writeFile(metadataPath, buffer);
+    if (legacyMetadataPath !== metadataPath) {
+      await fs.writeFile(legacyMetadataPath, buffer);
+    }
     const stats = await fs.stat(metadataPath);
     const checksum = computeChecksum(buffer);
 
@@ -500,7 +648,7 @@ export class ProjectSyncService {
         tools: metadata.tools,
         tags: metadata.tags,
         highlights: metadata.highlights,
-        links: metadata.links,
+        links: normalizedLinks,
         nda: metadata.nda,
         coverImage: metadata.coverImage,
         caseProblem: metadata.case?.problem ?? null,
@@ -583,7 +731,7 @@ export class ProjectSyncService {
       tools: project.tools ?? [],
       tags: project.tags ?? [],
       highlights: project.highlights ?? [],
-      links: (project.links as Record<string, unknown> | null) ?? null,
+      links: normalizeLinks(project.links ?? undefined),
       nda: project.nda ?? undefined,
       coverImage: project.coverImage ?? undefined,
       case: {

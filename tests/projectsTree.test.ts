@@ -13,19 +13,37 @@ describe('projects/ directory health', () => {
         continue;
       }
 
-      const metadataPath = path.join(projectsRoot, entry.name, 'metadata.json');
-      const briefPath = path.join(projectsRoot, entry.name, 'brief.md');
+      const metadataCandidates = ['02_Metadata.json', 'metadata.json'];
+      const briefCandidates = ['01_Narrative.md', 'brief.md'];
 
-      try {
-        await fs.access(metadataPath);
-      } catch {
-        assert.fail(`Missing metadata.json in projects/${entry.name}`);
+      const hasMetadata = await Promise.all(
+        metadataCandidates.map(async file => {
+          try {
+            await fs.access(path.join(projectsRoot, entry.name, file));
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      ).then(results => results.some(Boolean));
+
+      const hasNarrative = await Promise.all(
+        briefCandidates.map(async file => {
+          try {
+            await fs.access(path.join(projectsRoot, entry.name, file));
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      ).then(results => results.some(Boolean));
+
+      if (!hasMetadata) {
+        assert.fail(`Missing metadata file (metadata.json or 02_Metadata.json) in projects/${entry.name}`);
       }
 
-      try {
-        await fs.access(briefPath);
-      } catch {
-        assert.fail(`Missing brief.md in projects/${entry.name}`);
+      if (!hasNarrative) {
+        assert.fail(`Missing narrative file (brief.md or 01_Narrative.md) in projects/${entry.name}`);
       }
     }
   });

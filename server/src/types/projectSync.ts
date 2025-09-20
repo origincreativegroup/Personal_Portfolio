@@ -1,5 +1,11 @@
 import { Project, ProjectAsset, ProjectDeliverable } from '@prisma/client';
 
+export type ParsedMetadataLink = {
+  type?: string;
+  label?: string;
+  url: string;
+};
+
 export type ParsedMetadata = {
   schemaVersion?: string;
   title: string;
@@ -14,13 +20,20 @@ export type ParsedMetadata = {
   tools: string[];
   tags: string[];
   highlights: string[];
-  links?: Record<string, unknown> | null;
+  links: ParsedMetadataLink[];
   nda?: boolean;
   coverImage?: string | null;
   case?: {
     problem?: string | null;
+    challenge?: string | null;
     actions?: string | null;
     results?: string | null;
+  } | null;
+  pcsi?: {
+    problem?: string | null;
+    challenge?: string | null;
+    solution?: string | null;
+    impact?: string | null;
   } | null;
 };
 

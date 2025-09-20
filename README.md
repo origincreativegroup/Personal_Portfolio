@@ -70,11 +70,12 @@ Projects live in versioned folders under `projects/`:
 ```
 projects/
   2025_Acme_Redesign/
-    brief.md          # Narrative following Problem → Actions → Results
-    metadata.json     # Machine-readable fields for generation pipelines
-    cover.jpg         # Optional hero asset
-    assets/           # Reference images, decks, research docs, etc.
-    deliverables/     # Final exports shipped to the client/stakeholders
+    01_Narrative.md    # PCSI draft (Problem, Challenge, Solution, Impact)
+    02_Metadata.json   # Structured fields for downstream automation
+    03_Assets/         # Uploaded research, screenshots, decks, etc.
+    06_Exports/        # Processed deliverables and the required cover.jpg
+    metadata.json      # Legacy copy kept for backwards compatibility
+    brief.md           # Legacy narrative kept in sync with 01_Narrative.md
 ```
 
 Use the helper script to bootstrap new entries:

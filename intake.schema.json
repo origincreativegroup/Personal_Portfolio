@@ -63,6 +63,13 @@
           "minLength": 10,
           "examples": ["Users were abandoning checkout at a 67% rate due to complex multi-step process and poor mobile experience..."]
         },
+        "challenge": {
+          "type": "string",
+          "title": "Context & Constraints",
+          "description": "What made the problem difficult? Consider constraints, stakeholders, or timeline.",
+          "minLength": 5,
+          "examples": ["Aggressive two-week timeline with limited engineering support and strict compliance requirements."]
+        },
         "solution": {
           "type": "string",
           "title": "Solution Created",
@@ -70,7 +77,7 @@
           "minLength": 10,
           "examples": ["Redesigned checkout flow with single-page layout, mobile-first approach, and one-click payment options..."]
         },
-        "outcomes": {
+        "impact": {
           "type": "string",
           "title": "Outcomes & Impact",
           "description": "Measurable results, learnings, or long-term impact",
@@ -78,7 +85,7 @@
           "examples": ["Reduced cart abandonment to 23%, increased mobile conversions by 145%, generated additional $50K monthly revenue..."]
         }
       },
-      "required": ["problem", "solution", "outcomes"],
+      "required": ["problem", "challenge", "solution", "impact"],
       "additionalProperties": false
     },
     "projectDetails": {
@@ -278,8 +285,9 @@
       },
       "narrativeHooks": {
         "problem": "Mobile checkout abandonment was at 67% due to a complex 4-step process that wasn't optimized for small screens. Users struggled with form validation, payment selection, and address entry.",
+        "challenge": "Aggressive timeline with only two engineers available and strict compliance requirements for payments.",
         "solution": "Redesigned the entire checkout flow as a single-page experience with progressive disclosure, smart form validation, auto-complete features, and one-click payment options integrated with Apple Pay and Google Pay.",
-        "outcomes": "Reduced mobile cart abandonment from 67% to 23%, increased mobile conversion rate by 78%, and generated an additional $85K in monthly revenue. The design became the template for the company's other properties."
+        "impact": "Reduced mobile cart abandonment from 67% to 23%, increased mobile conversion rate by 78%, and generated an additional $85K in monthly revenue. The design became the template for the company's other properties."
       },
       "projectDetails": {
         "role": "designer",

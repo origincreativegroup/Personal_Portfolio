@@ -1,18 +1,5 @@
 import React, { useId, useRef, useState } from 'react'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Calendar,
-  Check,
-  FileText,
-  Folder,
-  Globe,
-  Image,
-  Plus,
-  Tag,
-  Upload,
-  X,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, FileText, Upload, X } from 'lucide-react'
 import { 
   newProject, 
   defaultTags, 
@@ -37,6 +24,103 @@ type UploadedFile = {
   preview: string | null
   dataUrl: string | null
   thumbnailUrl: string | null
+  file: File | null
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001'
+
+const allowedCoverMimeTypes = new Set(['image/jpeg', 'image/png'])
+
+const readFileAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+      } else {
+        reject(new Error('Unsupported file reader result'))
+      }
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+
+const createUploadedFileRecord = async (file: File): Promise<UploadedFile> => {
+  let dataUrl: string | null = null
+  let preview: string | null = null
+  let thumbnailUrl: string | null = null
+
+  try {
+    dataUrl = await readFileAsDataUrl(file)
+  } catch (error) {
+    console.warn('Unable to read file as data URL', error)
+  }
+
+  const handleAssetDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setAssetDragOver(false)
+    const files = event.dataTransfer.files
+    if (files && files.length > 0) {
+      void handleAssetSelection(files)
+    }
+  }
+
+  const handleAssetSelection = async (input?: FileList | File[]) => {
+    const fileList = input ? Array.from(input as ArrayLike<File>) : []
+
+    if (assetInputRef.current) {
+      assetInputRef.current.value = ''
+    }
+
+    if (fileList.length === 0) {
+      setLiveMessage('No additional files selected. You can continue without uploads.')
+      return
+    }
+
+    const processed: UploadedFile[] = []
+    for (const file of fileList) {
+      try {
+        const record = await createUploadedFileRecord(file)
+        processed.push(record)
+      } catch (error) {
+        console.error('Failed to process attachment', error)
+      }
+    }
+
+    if (processed.length > 0) {
+      setAssetUploads(previous => [...previous, ...processed])
+      setSubmissionError(null)
+      setLiveMessage(`${processed.length} additional file${processed.length > 1 ? 's' : ''} added.`)
+    } else {
+      setLiveMessage('We could not process the selected files. Please try again.')
+    }
+  }
+
+  const removeAsset = (index: number) => {
+    setAssetUploads(previous => previous.filter((_, itemIndex) => itemIndex !== index))
+    setLiveMessage('Attachment removed.')
+  }
+
+  if (file.type.startsWith('image/')) {
+    preview = dataUrl
+  } else if (file.type.startsWith('video/')) {
+    try {
+      thumbnailUrl = await generateVideoThumbnail(file)
+      preview = thumbnailUrl
+    } catch (error) {
+      console.warn('Unable to generate thumbnail for video asset', error)
+    }
+  }
+
+  return {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    preview,
+    dataUrl,
+    thumbnailUrl,
+    file,
+  }
 }
 
 const steps = ['Core Info', 'Narrative', 'Details', 'Review & Publish']
@@ -49,14 +133,17 @@ const initialFormState = {
   
   // Narrative Hooks
   problem: '',
+  challenge: '',
   solution: '',
-  outcomes: '',
+  impact: '',
   
   // Details for AI Resume/Profile Integration
   role: 'other' as ProjectRole,
   technologies: '',
   collaborators: '',
-  timeframe: '',
+  timeframeStart: '',
+  timeframeEnd: '',
+  timeframeDuration: '',
   
   // Links & References
   links: '',
@@ -81,13 +168,18 @@ const parseList = (value: string) =>
 export default function IntakeForm({ onComplete }: Props) {
   const [currentStep, setCurrentStep] = useState(0)
   const [dragOver, setDragOver] = useState(false)
+  const [assetDragOver, setAssetDragOver] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
+  const [assetUploads, setAssetUploads] = useState<UploadedFile[]>([])
   const [formData, setFormData] = useState(initialFormState)
   const [fileError, setFileError] = useState<string | null>(null)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [liveMessage, setLiveMessage] = useState<string>('')
 
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const assetInputRef = useRef<HTMLInputElement | null>(null)
   const dropzoneDescriptionId = useId()
   const dropzoneHintId = useId()
   const dropzoneHelpId = useId()
@@ -96,10 +188,10 @@ export default function IntakeForm({ onComplete }: Props) {
     event.preventDefault()
     setDragOver(false)
     const file = event.dataTransfer.files?.[0]
-    handleFileSelect(file)
+    void handleCoverSelect(file)
   }
 
-  const handleFileSelect = (file?: File) => {
+  const handleCoverSelect = async (file?: File) => {
     if (!file) {
       setLiveMessage('No file selected. You can continue without an upload.')
       return
@@ -109,40 +201,26 @@ export default function IntakeForm({ onComplete }: Props) {
       fileInputRef.current.value = ''
     }
 
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const result = typeof reader.result === 'string' ? reader.result : null
-      let thumbnailUrl: string | null = null
-
-      if (file.type.startsWith('video/')) {
-        try {
-          thumbnailUrl = await generateVideoThumbnail(file)
-        } catch (error) {
-          console.warn('Unable to generate thumbnail for video asset', error)
-        }
-      }
-
-      setUploadedFile({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        preview: file.type.startsWith('image/') && result ? result : null,
-        dataUrl: result,
-        thumbnailUrl,
-      })
-      setFileError(null)
-      setCurrentStep(1)
-      setLiveMessage(`File ${file.name} uploaded successfully.`)
+    if (!allowedCoverMimeTypes.has(file.type)) {
+      setUploadedFile(null)
+      setFileError('Please upload a JPG or PNG image for the cover.')
+      setLiveMessage('Unsupported cover image format.')
+      return
     }
-    reader.onerror = () => {
+
+    try {
+      const record = await createUploadedFileRecord(file)
+      setUploadedFile(record)
+      setFileError(null)
+      setSubmissionError(null)
+      setCurrentStep(1)
+      setLiveMessage(`Cover image ${file.name} uploaded successfully.`)
+    } catch (error) {
+      console.error('Failed to process cover image', error)
       setUploadedFile(null)
       setFileError('We couldn\'t read that file. Try choosing a different file or format.')
       setLiveMessage('File upload failed. Please try again.')
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
-    reader.readAsDataURL(file)
   }
 
   const handleInputChange = (field: keyof typeof initialFormState, value: string | boolean | ProjectRole | ProjectStatus) => {
@@ -163,12 +241,19 @@ export default function IntakeForm({ onComplete }: Props) {
   const resetFlow = () => {
     setCurrentStep(0)
     setDragOver(false)
+    setAssetDragOver(false)
     setUploadedFile(null)
+    setAssetUploads([])
     setFormData(initialFormState)
     setFileError(null)
+    setSubmissionError(null)
+    setIsSubmitting(false)
     setLiveMessage('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+    if (assetInputRef.current) {
+      assetInputRef.current.value = ''
     }
   }
 
@@ -202,53 +287,87 @@ export default function IntakeForm({ onComplete }: Props) {
     }
   }
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     const title = formData.title.trim()
     if (!title) {
       return
     }
 
     const meta = newProject(title)
-    
+
     // Core Info
     meta.summary = formData.summary.trim()
     meta.tags = parseList(formData.tags)
-    
+
     // Narrative Hooks
     meta.problem = formData.problem.trim()
+    meta.challenge = formData.challenge.trim()
     meta.solution = formData.solution.trim()
-    meta.outcomes = formData.outcomes.trim()
-    
+    meta.outcomes = formData.impact.trim()
+
     // Details
     meta.role = formData.role
     meta.status = formData.status
     meta.technologies = parseList(formData.technologies)
     meta.autoGenerateNarrative = formData.autoGenerateNarrative
-    
+
     // Collaborators
     if (formData.collaborators.trim()) {
       meta.collaborators = parseList(formData.collaborators).map(name => ({ name }))
     }
-    
+
     // Timeframe
-    if (formData.timeframe.trim()) {
-      meta.timeframe = { duration: formData.timeframe.trim() }
+    const timeframeStart = formData.timeframeStart.trim()
+    const timeframeEnd = formData.timeframeEnd.trim()
+    const timeframeDuration = formData.timeframeDuration.trim()
+    if (timeframeStart || timeframeEnd || timeframeDuration) {
+      meta.timeframe = {
+        start: timeframeStart || undefined,
+        end: timeframeEnd || undefined,
+        duration: timeframeDuration || undefined,
+      }
     }
-    
+
     // Links
-    if (formData.links.trim()) {
-      meta.links = parseList(formData.links).map(url => ({
-        type: 'other' as const,
-        url: url.trim(),
-      }))
+    const parsedLinks = formData.links.trim()
+      ? parseList(formData.links).map(url => ({
+          type: 'other' as const,
+          url: url.trim(),
+        }))
+      : []
+    if (parsedLinks.length > 0) {
+      meta.links = parsedLinks
     }
-    
+
     // Metrics
-    const metrics: any = {}
-    if (formData.sales.trim()) metrics.sales = formData.sales.trim()
-    if (formData.engagement.trim()) metrics.engagement = formData.engagement.trim()
-    if (formData.awards.trim()) metrics.awards = parseList(formData.awards)
-    if (formData.metricsOther.trim()) metrics.other = formData.metricsOther.trim()
+    const metrics: Record<string, unknown> = {}
+    const metricsEntries: Array<{ label: string; value: string }> = []
+    if (formData.sales.trim()) {
+      const value = formData.sales.trim()
+      metrics.sales = value
+      metricsEntries.push({ label: 'Sales/Revenue', value })
+    }
+    if (formData.engagement.trim()) {
+      const value = formData.engagement.trim()
+      metrics.engagement = value
+      metricsEntries.push({ label: 'Engagement/Usage', value })
+    }
+    if (formData.awards.trim()) {
+      const awards = parseList(formData.awards)
+      metrics.awards = awards
+      awards.forEach(entry => {
+        metricsEntries.push({ label: 'Recognition', value: entry })
+      })
+    }
+    if (formData.metricsOther.trim()) {
+      const value = formData.metricsOther.trim()
+      metrics.other = value
+      metricsEntries.push({ label: 'Other Impact', value })
+    }
     if (Object.keys(metrics).length > 0) {
       meta.metrics = metrics
     }
@@ -262,7 +381,77 @@ export default function IntakeForm({ onComplete }: Props) {
       }
     }
 
-    onComplete(meta)
+    if (assetUploads.length > 0) {
+      const additionalAssets = assetUploads
+        .map(createAssetFromUpload)
+        .filter((asset): asset is ProjectAsset => Boolean(asset))
+      if (additionalAssets.length > 0) {
+        meta.assets = meta.assets ? [...meta.assets, ...additionalAssets] : additionalAssets
+      }
+    }
+
+    const submissionPayload = {
+      title,
+      summary: meta.summary ?? '',
+      problem: meta.problem,
+      challenge: meta.challenge ?? '',
+      solution: meta.solution,
+      impact: meta.outcomes,
+      tags: meta.tags,
+      tools: parseList(formData.technologies),
+      technologies: meta.technologies ?? [],
+      role: meta.role,
+      status: meta.status,
+      collaborators: meta.collaborators ?? [],
+      timeframe: meta.timeframe ?? {},
+      metrics: metricsEntries,
+      highlights: metricsEntries.map(entry => `${entry.label}: ${entry.value}`),
+      links: parsedLinks,
+      autoGenerateNarrative: meta.autoGenerateNarrative,
+    }
+
+    const payload = new FormData()
+    payload.append('payload', JSON.stringify(submissionPayload))
+    if (uploadedFile?.file) {
+      payload.append('cover', uploadedFile.file)
+    }
+    assetUploads.forEach(asset => {
+      if (asset.file) {
+        payload.append('assets', asset.file)
+      }
+    })
+
+    setSubmissionError(null)
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/intake/projects`, {
+        method: 'POST',
+        body: payload,
+      })
+
+      if (!response.ok) {
+        let message = 'Failed to save project to repository.'
+        try {
+          const responseBody = await response.json()
+          if (responseBody && typeof responseBody.error === 'string') {
+            message = responseBody.error
+          }
+        } catch (error) {
+          console.warn('Unable to parse intake error response', error)
+        }
+        throw new Error(message)
+      }
+
+      setLiveMessage('Project saved to repository and workspace.')
+      onComplete(meta)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error while saving project'
+      setSubmissionError(message)
+      setLiveMessage(`Project save failed: ${message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleSkipUpload = () => {
@@ -271,6 +460,7 @@ export default function IntakeForm({ onComplete }: Props) {
     }
     setUploadedFile(null)
     setCurrentStep(1)
+    setSubmissionError(null)
     setLiveMessage('Upload skipped. You can add assets later from the editor.')
   }
 
@@ -400,15 +590,15 @@ export default function IntakeForm({ onComplete }: Props) {
                   onKeyDown={handleDropzoneKeyDown}
                 >
                   <Upload size={24} className="upload-flow__dropzone-icon" />
-                  <span>{uploadedFile ? uploadedFile.name : 'Drop image or click to upload'}</span>
+                  <span>{uploadedFile ? uploadedFile.name : 'Drop a JPG/PNG cover or click to upload'}</span>
                 </div>
 
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="upload-flow__file-input"
-                  accept="image/*"
-                  onChange={event => handleFileSelect(event.target.files?.[0])}
+                  accept="image/jpeg,image/png"
+                  onChange={event => void handleCoverSelect(event.target.files?.[0])}
                 />
 
                 {fileError && (
@@ -440,42 +630,55 @@ export default function IntakeForm({ onComplete }: Props) {
 
             <div className="upload-flow__form">
               <label className="upload-flow__field">
-                <span>What was the problem you identified? *</span>
+                <span>What problem did you identify? *</span>
                 <textarea
                   value={formData.problem}
                   onChange={event => handleInputChange('problem', event.target.value)}
-                  placeholder="Users were abandoning checkout at a 67% rate due to complex multi-step process and poor mobile experience..."
+                  placeholder="Users were abandoning checkout at a 67% rate due to a clunky multi-step process and poor mobile experience..."
                   rows={3}
                   className="upload-flow__textarea"
                   required
                 />
-                <small>Describe the challenge, pain point, or opportunity you discovered</small>
+                <small>Describe the pain point, audience, or opportunity you uncovered.</small>
               </label>
 
               <label className="upload-flow__field">
-                <span>What solution did you create? *</span>
+                <span>What made this challenge tricky? *</span>
+                <textarea
+                  value={formData.challenge}
+                  onChange={event => handleInputChange('challenge', event.target.value)}
+                  placeholder="Cross-functional stakeholders, aggressive launch timeline, and legacy platform restrictions..."
+                  rows={3}
+                  className="upload-flow__textarea"
+                  required
+                />
+                <small>Outline constraints, context, or unique hurdles you navigated.</small>
+              </label>
+
+              <label className="upload-flow__field">
+                <span>What solution did you implement? *</span>
                 <textarea
                   value={formData.solution}
                   onChange={event => handleInputChange('solution', event.target.value)}
-                  placeholder="Redesigned checkout flow with single-page layout, mobile-first approach, and one-click payment options..."
+                  placeholder="Redesigned checkout flow with single-page layout, mobile-first design system, and one-click payment options..."
                   rows={3}
                   className="upload-flow__textarea"
                   required
                 />
-                <small>Explain your approach, key decisions, and what you built</small>
+                <small>Explain your approach, key decisions, and contributions.</small>
               </label>
 
               <label className="upload-flow__field">
-                <span>What were the outcomes/impact? *</span>
+                <span>What impact or outcomes did you deliver? *</span>
                 <textarea
-                  value={formData.outcomes}
-                  onChange={event => handleInputChange('outcomes', event.target.value)}
-                  placeholder="Reduced cart abandonment to 23%, increased mobile conversions by 145%, generated additional $50K monthly revenue..."
+                  value={formData.impact}
+                  onChange={event => handleInputChange('impact', event.target.value)}
+                  placeholder="Reduced cart abandonment to 23%, increased mobile conversions by 145%, generated an additional $50K in monthly revenue..."
                   rows={3}
                   className="upload-flow__textarea"
                   required
                 />
-                <small>Share measurable results, learnings, or long-term impact</small>
+                <small>Share measurable results, qualitative wins, or lasting changes.</small>
               </label>
 
               <label className="upload-flow__field">
@@ -488,14 +691,19 @@ export default function IntakeForm({ onComplete }: Props) {
                   />
                   Auto-generate draft narrative after upload
                 </span>
-                <small>AI will create a polished case study narrative from your responses</small>
+                <small>AI will create a polished case study narrative from your responses.</small>
               </label>
             </div>
 
             <button
               type="button"
               onClick={nextStep}
-              disabled={!formData.problem.trim() || !formData.solution.trim() || !formData.outcomes.trim()}
+              disabled={
+                !formData.problem.trim() ||
+                !formData.challenge.trim() ||
+                !formData.solution.trim() ||
+                !formData.impact.trim()
+              }
               className="upload-flow__primary-button upload-flow__primary-button--full"
             >
               Continue to Details
@@ -570,14 +778,88 @@ export default function IntakeForm({ onComplete }: Props) {
 
                 <label className="upload-flow__field">
                   <span>Timeframe</span>
-                  <textarea
-                    value={formData.timeframe}
-                    onChange={event => handleInputChange('timeframe', event.target.value)}
-                    placeholder="3 months (January - March 2024)&#10;Sprint-based development&#10;Launch in Q1 2024"
-                    className="upload-flow__textarea"
-                    rows={3}
-                  />
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      value={formData.timeframeStart}
+                      onChange={event => handleInputChange('timeframeStart', event.target.value)}
+                      placeholder="Start (e.g., Jan 2024)"
+                      className="upload-flow__input"
+                    />
+                    <input
+                      type="text"
+                      value={formData.timeframeEnd}
+                      onChange={event => handleInputChange('timeframeEnd', event.target.value)}
+                      placeholder="End (e.g., Mar 2024 or Ongoing)"
+                      className="upload-flow__input"
+                    />
+                    <input
+                      type="text"
+                      value={formData.timeframeDuration}
+                      onChange={event => handleInputChange('timeframeDuration', event.target.value)}
+                      placeholder="Duration (e.g., 12 weeks)"
+                      className="upload-flow__input"
+                    />
+                  </div>
+                  <small>Provide whichever timeframe details you have.</small>
                 </label>
+              </div>
+
+              <div className="upload-flow__assets">
+                <h3>Project files &amp; references</h3>
+                <p className="upload-flow__assets-hint">Upload screenshots, research decks, videos, or supporting documents.</p>
+                <div
+                  className={`upload-flow__dropzone${assetDragOver ? ' upload-flow__dropzone--active' : ''}`}
+                  onDrop={handleAssetDrop}
+                  onDragOver={event => {
+                    event.preventDefault()
+                    setAssetDragOver(true)
+                  }}
+                  onDragLeave={() => setAssetDragOver(false)}
+                  onClick={() => assetInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={event => {
+                    if (['Enter', ' ', 'Space', 'Spacebar'].includes(event.key)) {
+                      event.preventDefault()
+                      assetInputRef.current?.click()
+                    }
+                  }}
+                >
+                  <Upload size={24} className="upload-flow__dropzone-icon" />
+                  <span>Drop files or click to upload (images, video, PDF, docs)</span>
+                </div>
+                <input
+                  ref={assetInputRef}
+                  type="file"
+                  className="upload-flow__file-input"
+                  multiple
+                  onChange={event => void handleAssetSelection(event.target.files ?? undefined)}
+                  accept="image/*,video/*,.pdf,.ppt,.pptx,.key,.doc,.docx,.xls,.xlsx,.zip"
+                />
+
+                {assetUploads.length > 0 && (
+                  <ul className="upload-flow__asset-list">
+                    {assetUploads.map((asset, index) => (
+                      <li key={`${asset.name}-${index}`} className="upload-flow__asset-item">
+                        <div className="upload-flow__asset-meta">
+                          <FileText size={16} aria-hidden="true" />
+                          <div>
+                            <strong>{asset.name}</strong>
+                            <div className="upload-flow__asset-sub">{formatFileSize(asset.size)}</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="button button--ghost button--small"
+                          onClick={() => removeAsset(index)}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <label className="upload-flow__field">
@@ -696,16 +978,26 @@ export default function IntakeForm({ onComplete }: Props) {
                     <dd>{formData.collaborators}</dd>
                   </div>
                 )}
-                {formData.timeframe && (
+                {(formData.timeframeStart || formData.timeframeEnd || formData.timeframeDuration) && (
                   <div>
                     <dt>Timeframe</dt>
-                    <dd>{formData.timeframe}</dd>
+                    <dd>
+                      {[formData.timeframeStart, formData.timeframeEnd, formData.timeframeDuration]
+                        .filter(Boolean)
+                        .join(' • ')}
+                    </dd>
                   </div>
                 )}
                 {formData.links && (
                   <div>
                     <dt>Links</dt>
                     <dd>{formData.links}</dd>
+                  </div>
+                )}
+                {assetUploads.length > 0 && (
+                  <div>
+                    <dt>Files</dt>
+                    <dd>{assetUploads.map(asset => asset.name).join(', ')}</dd>
                   </div>
                 )}
                 {(formData.sales || formData.engagement || formData.awards || formData.metricsOther) && (
@@ -733,14 +1025,23 @@ export default function IntakeForm({ onComplete }: Props) {
                     <strong>Problem:</strong> {formData.problem || 'Not specified'}
                   </div>
                   <div>
+                    <strong>Challenge:</strong> {formData.challenge || 'Not specified'}
+                  </div>
+                  <div>
                     <strong>Solution:</strong> {formData.solution || 'Not specified'}
                   </div>
                   <div>
-                    <strong>Outcomes:</strong> {formData.outcomes || 'Not specified'}
+                    <strong>Impact:</strong> {formData.impact || 'Not specified'}
                   </div>
                 </div>
               </div>
             </div>
+
+            {submissionError && (
+              <div className="upload-flow__error" role="alert">
+                {submissionError}
+              </div>
+            )}
 
             <div className="upload-flow__action-grid">
               <button
@@ -754,9 +1055,9 @@ export default function IntakeForm({ onComplete }: Props) {
                 type="button"
                 onClick={handlePublish}
                 className="upload-flow__primary-button"
-                disabled={!formData.title.trim()}
+                disabled={!formData.title.trim() || isSubmitting}
               >
-                Add to portfolio
+                {isSubmitting ? 'Saving…' : 'Add to portfolio'}
                 <ArrowRight size={18} />
               </button>
             </div>
