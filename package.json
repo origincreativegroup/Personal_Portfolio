@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "npm@10.8.2",
   "scripts": {
+    "start": "./start-macos.sh",
     "dev": "concurrently -k \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run dev --workspace @portfolioforge/api",
     "dev:web": "npm run dev --workspace @portfolioforge/web",

@@ -1,6 +1,6 @@
 // src/App.tsx
 import React, { Suspense, useEffect } from 'react'
-import { Route, Routes, Navigate } from 'react-router-dom'
+import { Route, Routes, Navigate, Link } from 'react-router-dom'
 import { AppProvider } from './contexts/AppContext'
 import { DebugProvider, useDebug } from './contexts/DebugContext'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -23,6 +23,9 @@ const PortfolioForgeAIAnalysis = React.lazy(() => import('./pages/PortfolioForge
 const OpenAISettingsPage = React.lazy(() => import('./pages/OpenAISettingsPage'))
 const PortfolioEditorPage = React.lazy(() => import('./pages/PortfolioEditorPage'))
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage'))
+// Case Study pages
+const CaseStudyPage = React.lazy(() => import('./pages/CaseStudyPage'))
+const CaseStudyEditorPage = React.lazy(() => import('./pages/CaseStudyEditorPage'))
 // Legacy pages for backward compatibility
 const IntakePage = React.lazy(() => import('./pages/IntakePage'))
 const EditorPage = React.lazy(() => import('./pages/EditorPage'))
@@ -50,6 +53,31 @@ function AppContent() {
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+        {/* Cross-App Navigation Header */}
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-3">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Portfolio Forge
+                </h1>
+                <span className="text-sm text-gray-500 dark:text-gray-400">React App</span>
+              </div>
+              <nav className="flex items-center space-x-4">
+                <Link
+                  to="/case-studies"
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Case Studies
+                </Link>
+              </nav>
+            </div>
+          </div>
+        </header>
+
         <main>
           <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
@@ -71,6 +99,10 @@ function AppContent() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/portfolio/editor" element={<PortfolioEditorPage />} />
+
+              {/* Case Study routes */}
+              <Route path="/case-studies" element={<CaseStudyPage />} />
+              <Route path="/case-studies/:projectId/edit" element={<CaseStudyEditorPage />} />
 
               {/* AI Analysis route */}
               <Route path="/analysis" element={<PortfolioForgeAIAnalysis />} />
