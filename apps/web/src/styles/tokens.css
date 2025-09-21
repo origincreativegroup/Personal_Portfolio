@@ -1,0 +1,7 @@
+:root {
+  --color-primary: #5a3cf4;
+  --color-highlight: #cbc0ff;
+  --color-text-strong: #1a1a1a;
+  --color-text-muted: #333333;
+  --font-base: 'Inter', system-ui, sans-serif;
+}

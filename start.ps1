@@ -20,8 +20,14 @@ $Colors = @{
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
+$WorkspaceFrontendPath = Join-Path $ScriptDir "apps/web"
 $PortfolioFrontendPath = Join-Path $ScriptDir "portfolio-intake"
-if (Test-Path (Join-Path $PortfolioFrontendPath "package.json")) {
+
+if (Test-Path (Join-Path $WorkspaceFrontendPath "package.json")) {
+    $FrontendPath = $WorkspaceFrontendPath
+    $FrontendName = Split-Path $FrontendPath -Leaf
+}
+elseif (Test-Path (Join-Path $PortfolioFrontendPath "package.json")) {
     $FrontendPath = $PortfolioFrontendPath
     $FrontendName = Split-Path $FrontendPath -Leaf
 }

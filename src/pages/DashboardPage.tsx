@@ -1,18 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowRightCircle,
+  Activity,
+  ArrowUpRight,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  ChevronDown,
   Download,
   FileText,
-  Folder,
-  FolderOpen,
   Layers,
+  LayoutDashboard,
+  Menu,
   Plus,
-  RefreshCw,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Target,
   Trash2,
+  TrendingUp,
   Upload,
+  Users,
+  X,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Button, Input, LoadingSpinner } from '../components/ui'
+import { Button, LoadingSpinner } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import {
   deleteProject,
@@ -22,6 +34,22 @@ import {
 } from '../utils/storageManager'
 import type { ProjectMeta } from '../intake/schema'
 import ThemeToggle from '../components/ThemeToggle'
+import {
+  DASHBOARD_TIMEFRAMES,
+  buildDashboardSnapshot,
+  defaultDashboardTimeframe,
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  type Announcement,
+  type ChannelPerformance,
+  type DashboardSnapshot,
+  type DashboardTimeframe,
+  type Metric,
+  type PipelineItem,
+  type TeamMember,
+} from '../utils/dashboardData'
+import './DashboardPage.css'
 
 export type ApiAssetPreview = {
   id: string
@@ -217,7 +245,7 @@ export const DeliverablePreviewList: React.FC<{ deliverables: ApiDeliverablePrev
   </section>
 )
 
-const formatDate = (value?: string) => {
+const formatProjectDate = (value?: string) => {
   if (!value) {
     return 'Just created'
   }
@@ -245,6 +273,514 @@ const downloadJson = (filename: string, payload: unknown) => {
 const countCaseStudiesReady = (projects: ProjectMeta[]) =>
   projects.filter(project => Boolean(project.caseStudyContent?.overview || project.caseStudyHtml)).length
 
+const NAVIGATION_ITEMS: Array<{ label: string; icon: React.ComponentType<{ size?: number }> }> = [
+  { label: 'Overview', icon: LayoutDashboard },
+  { label: 'Analytics', icon: BarChart3 },
+  { label: 'Projects', icon: Activity },
+  { label: 'Team', icon: Users },
+  { label: 'Settings', icon: Settings },
+]
+
+const TIMEFRAME_LABELS: Record<DashboardTimeframe, string> = {
+  week: 'Weekly',
+  month: 'Monthly',
+  quarter: 'Quarterly',
+  year: 'Yearly',
+}
+
+const TIMEFRAME_DESCRIPTION: Record<DashboardTimeframe, string> = {
+  week: 'A real-time look at momentum across the current sprint.',
+  month: 'A strategic overview of performance across the current month.',
+  quarter: 'Quarterly health across pipeline, revenue, and delivery.',
+  year: 'An annual perspective on growth, retention, and utilisation.',
+}
+
+type MetricCardProps = {
+  metric: Metric
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ metric }) => {
+  const isPositive = metric.direction === 'up'
+  const formattedValue =
+    metric.unit === 'currency'
+      ? formatCurrency(metric.value)
+      : metric.unit === 'percentage'
+        ? formatPercentage(metric.value)
+        : formatNumber(metric.value)
+
+  return (
+    <article className="dashboard-metric-card" aria-label={`${metric.label} summary`}>
+      <header className="dashboard-metric-card__header">
+        <span className="dashboard-metric-card__title">{metric.label}</span>
+        <span
+          className={`dashboard-metric-card__trend dashboard-metric-card__trend--${isPositive ? 'positive' : 'negative'}`}
+          aria-label={`Change ${metric.direction === 'up' ? 'upward' : 'downward'} ${formatPercentage(metric.change)}`}
+        >
+          {isPositive ? '▲' : '▼'} {formatPercentage(metric.change)}
+        </span>
+      </header>
+      <p className="dashboard-metric-card__value">{formattedValue}</p>
+      <p className="dashboard-metric-card__description">{metric.description}</p>
+    </article>
+  )
+}
+
+type RevenuePanelProps = {
+  snapshot: DashboardSnapshot
+}
+
+const RevenuePanel: React.FC<RevenuePanelProps> = ({ snapshot }) => {
+  const revenueMetric = snapshot.metrics.find(candidate => candidate.id === 'revenue')
+  const trendLabel = revenueMetric
+    ? `${revenueMetric.direction === 'up' ? '+' : '−'}${formatPercentage(revenueMetric.change)}`
+    : 'Stable vs previous period'
+  const chartMax = snapshot.revenue.series.length > 0
+    ? Math.max(...snapshot.revenue.series.map(point => point.revenue), 1)
+    : 1
+
+  return (
+    <section className="dashboard-card dashboard-revenue-card" aria-labelledby="dashboard-revenue-heading">
+      <header className="dashboard-card__header">
+        <div>
+          <h2 id="dashboard-revenue-heading">Revenue overview</h2>
+          <p className="dashboard-card__subtitle">Revenue and profit trends for the selected timeframe.</p>
+        </div>
+        <div className="dashboard-card__trend">
+          <TrendingUp size={16} aria-hidden="true" />
+          <span>{trendLabel}</span>
+        </div>
+      </header>
+
+      <div className="dashboard-revenue-summary">
+        <div>
+          <span className="dashboard-revenue-summary__label">Total revenue</span>
+          <span className="dashboard-revenue-summary__value">{formatCurrency(snapshot.revenue.totalRevenue)}</span>
+        </div>
+        <div>
+          <span className="dashboard-revenue-summary__label">Net profit</span>
+          <span className="dashboard-revenue-summary__value">{formatCurrency(snapshot.revenue.totalProfit)}</span>
+        </div>
+        <div>
+          <span className="dashboard-revenue-summary__label">Average margin</span>
+          <span className="dashboard-revenue-summary__value">{formatPercentage(snapshot.revenue.averageMargin)}</span>
+        </div>
+      </div>
+
+      <div className="dashboard-revenue-chart" role="list" aria-label="Revenue trend chart">
+        {snapshot.revenue.series.map(point => {
+          const revenueHeight = chartMax === 0 ? 0 : Math.round((point.revenue / chartMax) * 100)
+          const profitHeight = point.revenue === 0 ? 0 : Math.round((point.profit / point.revenue) * 100)
+          return (
+            <div key={point.label} className="dashboard-revenue-chart__column" role="listitem">
+              <div className="dashboard-revenue-chart__bar" aria-hidden="true">
+                <span
+                  className="dashboard-revenue-chart__bar-total"
+                  style={{ height: `${revenueHeight}%` }}
+                >
+                  <span
+                    className="dashboard-revenue-chart__bar-profit"
+                    style={{ height: `${profitHeight}%` }}
+                  />
+                </span>
+              </div>
+              <span className="dashboard-revenue-chart__label">{point.label}</span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+type PipelineTableProps = {
+  items: PipelineItem[]
+}
+
+const pipelineStatusTone: Record<PipelineItem['status'], 'positive' | 'warning' | 'danger' | 'neutral'> = {
+  Completed: 'positive',
+  'In review': 'warning',
+  'In progress': 'neutral',
+  'At risk': 'danger',
+}
+
+const PipelineTable: React.FC<PipelineTableProps> = ({ items }) => (
+  <section className="dashboard-card dashboard-pipeline-card" aria-labelledby="dashboard-pipeline-heading">
+    <header className="dashboard-card__header">
+      <div>
+        <h2 id="dashboard-pipeline-heading">Project pipeline</h2>
+        <p className="dashboard-card__subtitle">Active client engagements across discovery, delivery, and QA.</p>
+      </div>
+      <div className="dashboard-card__hint">
+        <CheckCircle2 size={16} aria-hidden="true" />
+        <span>{formatNumber(items.filter(item => item.status === 'Completed').length)} completed</span>
+      </div>
+    </header>
+
+    <div className="dashboard-table-scroll">
+      <table className="dashboard-pipeline-table">
+        <thead>
+          <tr>
+            <th scope="col">Project</th>
+            <th scope="col">Client</th>
+            <th scope="col">Status</th>
+            <th scope="col">Progress</th>
+            <th scope="col" className="dashboard-align-right">Budget</th>
+            <th scope="col">Due</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id}>
+              <td data-title="Project">
+                <div className="dashboard-pipeline-project">
+                  <span className="dashboard-pipeline-project__code">{item.id}</span>
+                  <span className="dashboard-pipeline-project__name">{item.project}</span>
+                </div>
+              </td>
+              <td data-title="Client">{item.client}</td>
+              <td data-title="Status">
+                <span className={`dashboard-status-badge dashboard-status-badge--${pipelineStatusTone[item.status]}`}>
+                  {item.status}
+                </span>
+              </td>
+              <td data-title="Progress">
+                <div className="dashboard-progress">
+                  <span className="dashboard-progress__track">
+                    <span className="dashboard-progress__bar" style={{ width: `${item.progress}%` }} />
+                  </span>
+                  <span className="dashboard-progress__value">{item.progress}%</span>
+                </div>
+              </td>
+              <td data-title="Budget" className="dashboard-align-right">{formatCurrency(item.amount)}</td>
+              <td data-title="Due">{formatShortDate(item.dueDate)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+)
+
+type TeamListProps = {
+  members: TeamMember[]
+}
+
+const TeamList: React.FC<TeamListProps> = ({ members }) => {
+  const maxContribution = members.length > 0 ? Math.max(...members.map(member => member.contributions), 1) : 1
+
+  return (
+    <section className="dashboard-card dashboard-team-card" aria-labelledby="dashboard-team-heading">
+      <header className="dashboard-card__header">
+        <div>
+          <h2 id="dashboard-team-heading">Team focus</h2>
+          <p className="dashboard-card__subtitle">Allocation, contributions, and current focus areas.</p>
+        </div>
+        <div className="dashboard-card__hint">
+          <Users size={16} aria-hidden="true" />
+          <span>{formatNumber(members.length)} key contributors</span>
+        </div>
+      </header>
+      <ul className="dashboard-team-list">
+        {members.map(member => (
+          <li key={member.id} className="dashboard-team-list__item">
+            <span className="dashboard-team-list__avatar" style={{ backgroundColor: member.avatarColor }} aria-hidden="true">
+              {getInitials(member.name)}
+            </span>
+            <div className="dashboard-team-list__content">
+              <div className="dashboard-team-list__heading">
+                <span className="dashboard-team-list__name">{member.name}</span>
+                <span className="dashboard-team-list__role">{member.role}</span>
+              </div>
+              <p className="dashboard-team-list__focus">Current focus: {member.focus}</p>
+              <div className="dashboard-team-list__progress" aria-label={`${member.contributions} contributions`}>
+                <span
+                  className="dashboard-team-list__progress-bar"
+                  style={{ width: `${Math.round((member.contributions / maxContribution) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="dashboard-team-list__metrics">
+              <span className="dashboard-team-list__metric-label">Contributions</span>
+              <span className="dashboard-team-list__metric-value">{formatNumber(member.contributions)}</span>
+              <span className="dashboard-team-list__metric-label">Hours</span>
+              <span className="dashboard-team-list__metric-value">{formatNumber(member.hours)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+type ChannelListProps = {
+  channels: ChannelPerformance[]
+  summary: DashboardSnapshot['channelSummary']
+}
+
+const ChannelList: React.FC<ChannelListProps> = ({ channels, summary }) => (
+  <section className="dashboard-card dashboard-channel-card" aria-labelledby="dashboard-channel-heading">
+    <header className="dashboard-card__header">
+      <div>
+        <h2 id="dashboard-channel-heading">Growth channels</h2>
+        <p className="dashboard-card__subtitle">Lead generation and conversion performance.</p>
+      </div>
+      <div className="dashboard-channel-summary">
+        <div>
+          <span className="dashboard-channel-summary__label">Leads</span>
+          <span className="dashboard-channel-summary__value">{formatNumber(summary.totalLeads)}</span>
+        </div>
+        <div>
+          <span className="dashboard-channel-summary__label">Top channel</span>
+          <span className="dashboard-channel-summary__value">{summary.strongestChannel.channel}</span>
+        </div>
+        <div>
+          <span className="dashboard-channel-summary__label">Avg. conversion</span>
+          <span className="dashboard-channel-summary__value">{formatPercentage(summary.averageConversion)}</span>
+        </div>
+      </div>
+    </header>
+    <ul className="dashboard-channel-list">
+      {channels.map(channel => (
+        <li key={channel.id} className="dashboard-channel-list__item">
+          <div>
+            <span className="dashboard-channel-list__name">{channel.channel}</span>
+            <span className="dashboard-channel-list__details">
+              {formatNumber(channel.leads)} leads • {formatNumber(channel.opportunities)} opportunities
+            </span>
+          </div>
+          <div className="dashboard-channel-list__metrics">
+            <span className="dashboard-channel-list__rate">{formatPercentage(channel.conversionRate)}</span>
+            <span className="dashboard-channel-list__trend">+{formatPercentage(channel.trend)}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+)
+
+type AnnouncementListProps = {
+  items: Announcement[]
+}
+
+const AnnouncementList: React.FC<AnnouncementListProps> = ({ items }) => (
+  <section className="dashboard-card dashboard-announcement-card" aria-labelledby="dashboard-announcement-heading">
+    <header className="dashboard-card__header">
+      <div>
+        <h2 id="dashboard-announcement-heading">Updates</h2>
+        <p className="dashboard-card__subtitle">Operational updates and enablement highlights for the team.</p>
+      </div>
+    </header>
+    <ul className="dashboard-announcement-list">
+      {items.map(item => (
+        <li key={item.id} className="dashboard-announcement-list__item">
+          <div className="dashboard-announcement-list__icon" aria-hidden="true">
+            <Sparkles size={16} />
+          </div>
+          <div className="dashboard-announcement-list__content">
+            <div className="dashboard-announcement-list__heading">
+              <span className="dashboard-announcement-list__title">{item.title}</span>
+              <span className="dashboard-announcement-list__date">{formatShortDate(item.date)}</span>
+            </div>
+            <p className="dashboard-announcement-list__message">{item.message}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+)
+
+const formatShortDate = (value: string): string => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const getInitials = (name: string): string => {
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length === 0) {
+    return 'T'
+  }
+  if (parts.length === 1) {
+    return parts[0]!.slice(0, 2).toUpperCase()
+  }
+  return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+}
+
+type PortfolioProjectsCardProps = {
+  projects: ProjectMeta[]
+  totalProjects: number
+  stats: { totalProjects: number; caseStudiesReady: number; totalAssets: number }
+  storageUsage: { used: number; available: number; percentage: number } | null
+  onImportClick: () => void
+  onExportAll: () => void
+  onExportProject: (project: ProjectMeta) => void
+  onDeleteProject: (slug: string) => void
+  fileInputRef: React.RefObject<HTMLInputElement>
+  onImportChange: React.ChangeEventHandler<HTMLInputElement>
+  isImporting: boolean
+  searchQuery: string
+  isLoading: boolean
+}
+
+const PortfolioProjectsCard: React.FC<PortfolioProjectsCardProps> = ({
+  projects,
+  totalProjects,
+  stats,
+  storageUsage,
+  onImportClick,
+  onExportAll,
+  onExportProject,
+  onDeleteProject,
+  fileInputRef,
+  onImportChange,
+  isImporting,
+  searchQuery,
+  isLoading,
+}) => {
+  const hasProjects = totalProjects > 0
+  const emptyMessage = hasProjects
+    ? searchQuery
+      ? `No projects match “${searchQuery}”.`
+      : 'No projects match your filters.'
+    : 'No projects yet. Start by creating your first project intake.'
+
+  return (
+    <section className="dashboard-card dashboard-portfolio-card" aria-labelledby="dashboard-portfolio-heading">
+      <header className="dashboard-card__header">
+        <div>
+          <h2 id="dashboard-portfolio-heading">Portfolio projects</h2>
+          <p className="dashboard-card__subtitle">
+            Manage local case studies, imports, and exports from your browser.
+          </p>
+        </div>
+        <div className="dashboard-portfolio-actions">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            hidden
+            onChange={onImportChange}
+          />
+          <Button
+            variant="outline"
+            onClick={onImportClick}
+            leftIcon={<Upload size={16} />}
+            loading={isImporting}
+          >
+            Import JSON
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onExportAll}
+            leftIcon={<Download size={16} />}
+            disabled={!hasProjects}
+          >
+            Export all
+          </Button>
+        </div>
+      </header>
+
+      <div className="dashboard-portfolio-stats" role="list">
+        <div role="listitem">
+          <span className="dashboard-portfolio-stat-label">Projects</span>
+          <span className="dashboard-portfolio-stat-value">{stats.totalProjects}</span>
+        </div>
+        <div role="listitem">
+          <span className="dashboard-portfolio-stat-label">Case studies ready</span>
+          <span className="dashboard-portfolio-stat-value">{stats.caseStudiesReady}</span>
+        </div>
+        <div role="listitem">
+          <span className="dashboard-portfolio-stat-label">Assets</span>
+          <span className="dashboard-portfolio-stat-value">{stats.totalAssets}</span>
+        </div>
+        <div role="listitem">
+          <span className="dashboard-portfolio-stat-label">Storage</span>
+          <span className="dashboard-portfolio-stat-value">
+            {storageUsage
+              ? `${storageUsage.used}MB • ${storageUsage.percentage}% of ${storageUsage.available}MB`
+              : 'Unavailable'}
+          </span>
+        </div>
+      </div>
+
+      <div className="dashboard-portfolio-list">
+        {isLoading ? (
+          <div className="dashboard-portfolio-empty">
+            <LoadingSpinner size="md" text="Loading your projects..." />
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="dashboard-portfolio-empty">{emptyMessage}</div>
+        ) : (
+          <ul className="dashboard-portfolio-items">
+            {projects.map(project => (
+              <li key={project.slug} className="dashboard-portfolio-project">
+                <div className="dashboard-portfolio-project__header">
+                  <div>
+                    <h3 className="dashboard-portfolio-project__title">{project.title}</h3>
+                    <span className="dashboard-portfolio-status">
+                      {project.status === 'draft'
+                        ? 'Draft'
+                        : project.status === 'cast'
+                          ? 'In review'
+                          : 'Published'}
+                    </span>
+                  </div>
+                  <div className="dashboard-portfolio-project__actions button-row">
+                    <Button
+                      as={Link}
+                      to={`/editor/${project.slug}`}
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<FileText size={16} />}
+                    >
+                      Case study
+                    </Button>
+                    <Button
+                      onClick={() => onExportProject(project)}
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Download size={16} />}
+                    >
+                      Export
+                    </Button>
+                    <Button
+                      onClick={() => onDeleteProject(project.slug)}
+                      variant="danger"
+                      size="sm"
+                      leftIcon={<Trash2 size={16} />}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+                {project.summary ? (
+                  <p className="dashboard-portfolio-summary">{project.summary}</p>
+                ) : null}
+                <div className="dashboard-portfolio-meta">
+                  <span>{project.assets.length} assets</span>
+                  <span>Updated {formatProjectDate(project.updatedAt)}</span>
+                  <span>{project.caseStudyContent?.overview ? 'Narrative ready' : 'Needs narrative'}</span>
+                </div>
+                {project.tags.length > 0 ? (
+                  <div className="dashboard-portfolio-tags">
+                    {project.tags.slice(0, 5).map(tag => (
+                      <span key={tag} className="dashboard-portfolio-tag">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
 const DashboardPage: React.FC = () => {
   const { addNotification } = useApp()
 
@@ -253,7 +789,12 @@ const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [storageUsage, setStorageUsage] = useState<{ used: number; available: number; percentage: number } | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [timeframe, setTimeframe] = useState<DashboardTimeframe>(defaultDashboardTimeframe)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const snapshot = useMemo(() => buildDashboardSnapshot(timeframe), [timeframe])
 
   const refreshProjects = useCallback(async () => {
     setIsLoading(true)
@@ -275,6 +816,32 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     void refreshProjects()
   }, [refreshProjects])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 960px)')
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches)
+      if (event.matches) {
+        setSidebarOpen(false)
+      }
+    }
+
+    setIsDesktop(mediaQuery.matches)
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange)
+    } else {
+      mediaQuery.addListener(handleChange)
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange)
+      } else {
+        mediaQuery.removeListener(handleChange)
+      }
+    }
+  }, [])
 
   const filteredProjects = useMemo(() => {
     if (!searchQuery) {
@@ -351,244 +918,198 @@ const DashboardPage: React.FC = () => {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="app-page">
-        <main
-          className="app-page__body"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}
-        >
-          <LoadingSpinner size="lg" text="Loading your projects..." centered />
-        </main>
-      </div>
-    )
+  const toggleSidebar = () => {
+    if (isDesktop) {
+      return
+    }
+    setSidebarOpen(previous => !previous)
   }
 
+  const closeSidebar = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleNavigation = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false)
+    }
+  }
+
+  const isSidebarVisible = isDesktop || isSidebarOpen
+
   return (
-    <div className="app-page">
-      <header className="app-page__header">
-        <div className="app-page__header-inner">
-          <div className="dashboard-hero">
-            <div className="dashboard-hero__icon">
-              <Folder width={28} height={28} />
+    <div className="dashboard-app-shell">
+      {!isDesktop && isSidebarOpen ? (
+        <button type="button" className="dashboard-sidebar-overlay" onClick={closeSidebar} aria-label="Close navigation" />
+      ) : null}
+      <aside
+        id="dashboard-primary-navigation"
+        className={[
+          'dashboard-sidebar',
+          isDesktop ? 'dashboard-sidebar--desktop' : 'dashboard-sidebar--mobile',
+          isSidebarVisible ? 'dashboard-sidebar--open' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label="Primary navigation"
+        aria-hidden={!isDesktop && !isSidebarOpen}
+      >
+        <div className="dashboard-sidebar__header">
+          <div className="dashboard-sidebar__brand">
+            <div className="dashboard-sidebar__mark" aria-hidden="true">
+              <ShieldCheck size={24} />
             </div>
             <div>
-              <h1 className="dashboard-hero__title">Portfolio control centre</h1>
-              <p className="section-subtitle">
-                Capture project details, manage files locally, and generate polished narratives.
-              </p>
+              <span className="dashboard-sidebar__title">PortfolioForge</span>
+              <span className="dashboard-sidebar__subtitle">Control centre</span>
             </div>
           </div>
-          <div className="button-row">
+          {!isDesktop && (
+            <button type="button" className="dashboard-sidebar__close" onClick={closeSidebar} aria-label="Close navigation">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        <nav>
+          <ul className="dashboard-sidebar__nav">
+            {NAVIGATION_ITEMS.map(item => (
+              <li key={item.label}>
+                <a
+                  className={`dashboard-sidebar__link${item.label === 'Overview' ? ' is-active' : ''}`}
+                  href="#"
+                  onClick={event => {
+                    event.preventDefault()
+                    handleNavigation()
+                  }}
+                >
+                  <item.icon size={16} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="dashboard-sidebar__footer">
+          <div className="dashboard-sidebar__footer-heading">
+            <Target size={16} aria-hidden="true" />
+            <span>Quarterly target</span>
+          </div>
+          <p className="dashboard-sidebar__footer-body">
+            Tracking ahead of plan. Maintain inbound cadence and delivery velocity.
+          </p>
+          <button type="button" className="dashboard-sidebar__footer-action">
+            <ArrowUpRight size={16} aria-hidden="true" />
+            View playbook
+          </button>
+        </div>
+      </aside>
+
+      <div className="dashboard-workspace">
+        <header className="dashboard-topbar">
+          <button
+            type="button"
+            className="dashboard-topbar__menu"
+            aria-label="Toggle navigation"
+            aria-controls="dashboard-primary-navigation"
+            aria-expanded={isDesktop ? true : isSidebarOpen}
+            onClick={toggleSidebar}
+          >
+            <Menu size={18} />
+          </button>
+          <div className="dashboard-topbar__search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search projects, clients, and docs"
+              aria-label="Search dashboard"
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+            />
+          </div>
+          <div className="dashboard-topbar__actions">
+            <button type="button" className="dashboard-icon-button" aria-label="Notifications">
+              <Bell size={18} />
+            </button>
             <ThemeToggle />
-            <Button as={Link} to="/assets" variant="outline" leftIcon={<FolderOpen size={18} />}>
-              Manage Assets
-            </Button>
-            <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Layers size={18} />}>
+            <div className="dashboard-user-pill" role="button" tabIndex={0} aria-label="Account menu">
+              <div className="dashboard-user-pill__avatar" aria-hidden="true">
+                <Users size={16} />
+              </div>
+              <div className="dashboard-user-pill__meta">
+                <span className="dashboard-user-pill__name">Nova Martinez</span>
+                <span className="dashboard-user-pill__role">Operations lead</span>
+              </div>
+              <ChevronDown size={16} aria-hidden="true" />
+            </div>
+            <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Layers size={16} />}>
               View portfolio
             </Button>
-            <Button as={Link} to="/create" variant="primary" leftIcon={<Plus size={18} />}>
+            <Button as={Link} to="/create" variant="primary" leftIcon={<Plus size={16} />}>
               New project
             </Button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="app-page__body">
-        <section className="stats-grid">
-          <article
-            className="stat-card surface"
-            style={{ background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)' }}
-          >
-            <div className="stat-card__icon">
-              <Folder width={18} height={18} />
-            </div>
-            <span className="stat-card__label">Projects</span>
-            <span className="stat-card__value">{stats.totalProjects}</span>
-            <p className="stat-card__description">All projects are saved locally in your browser.</p>
-          </article>
-
-          <article
-            className="stat-card surface"
-            style={{ background: 'linear-gradient(135deg, #f3e8ff, #ede9fe)' }}
-          >
-            <div className="stat-card__icon">
-              <FileText width={18} height={18} />
-            </div>
-            <span className="stat-card__label">Case studies ready</span>
-            <span className="stat-card__value">{stats.caseStudiesReady}</span>
-            <p className="stat-card__description">
-              AI-assisted narratives make these projects portfolio-ready.
-            </p>
-          </article>
-
-          <article
-            className="stat-card surface"
-            style={{ background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)' }}
-          >
-            <div className="stat-card__icon">
-              <Upload width={18} height={18} />
-            </div>
-            <span className="stat-card__label">Assets</span>
-            <span className="stat-card__value">{stats.totalAssets}</span>
-            <p className="stat-card__description">Upload images and files directly into each project.</p>
-          </article>
-
-          <article
-            className="stat-card surface"
-            style={{ background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)' }}
-          >
-            <div className="stat-card__icon">
-              <RefreshCw width={18} height={18} />
-            </div>
-            <span className="stat-card__label">Storage used</span>
-            <span className="stat-card__value">
-              {storageUsage ? `${storageUsage.used}MB` : '—'}
-            </span>
-            <p className="stat-card__description">
-              {storageUsage
-                ? `Approx. ${storageUsage.percentage}% of ${storageUsage.available}MB local capacity`
-                : 'Storage usage unavailable'}
-            </p>
-          </article>
-        </section>
-
-        <section className="surface surface--raised">
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '1.5rem',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '1px solid var(--color-border)',
-              paddingBottom: '1.5rem',
-              marginBottom: '1.5rem',
-            }}
-          >
+        <main className="dashboard-workspace__content">
+          <section className="dashboard-page-heading">
             <div>
-              <h2 className="section-title">Local projects</h2>
-              <p className="section-subtitle">Search, export, or jump straight into the case study editor.</p>
+              <span className="dashboard-page-heading__eyebrow">PortfolioForge</span>
+              <h1 className="dashboard-page-heading__title">Control centre</h1>
+              <p className="dashboard-page-heading__description">{TIMEFRAME_DESCRIPTION[timeframe]}</p>
             </div>
-            <div className="dashboard-toolbar">
-              <div className="dashboard-toolbar__search">
-                <Input
-                  placeholder="Search projects"
-                  value={searchQuery}
-                  onChange={event => setSearchQuery(event.target.value)}
-                  leftIcon={<ArrowRightCircle width={16} height={16} />}
-                  fullWidth
-                />
-              </div>
-              <div className="dashboard-toolbar__actions">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json"
-                  hidden
-                  onChange={handleImport}
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  leftIcon={<Upload width={16} height={16} />}
-                  loading={isImporting}
+            <div className="dashboard-timeframe-toggle" role="group" aria-label="Select timeframe">
+              {DASHBOARD_TIMEFRAMES.map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`dashboard-timeframe-toggle__button${option === timeframe ? ' is-active' : ''}`}
+                  onClick={() => setTimeframe(option)}
+                  aria-pressed={option === timeframe}
                 >
-                  Import
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => downloadJson('portfolio-projects.json', projects)}
-                  leftIcon={<Download width={16} height={16} />}
-                  disabled={projects.length === 0}
-                >
-                  Export all
-                </Button>
-              </div>
+                  {TIMEFRAME_LABELS[option]}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-metrics-grid">
+            {snapshot.metrics.map(metric => (
+              <MetricCard key={metric.id} metric={metric} />
+            ))}
+          </section>
+
+          <div className="dashboard-primary-grid">
+            <RevenuePanel snapshot={snapshot} />
+            <TeamList members={snapshot.team} />
+          </div>
+
+          <div className="dashboard-secondary-grid">
+            <PipelineTable items={snapshot.pipeline} />
+            <div className="dashboard-secondary-grid__column">
+              <ChannelList channels={snapshot.channels} summary={snapshot.channelSummary} />
+              <AnnouncementList items={snapshot.highlights} />
             </div>
           </div>
 
-          {filteredProjects.length === 0 ? (
-            <div className="dashboard-empty">
-              {projects.length === 0
-                ? 'No projects yet. Start by creating your first project intake.'
-                : 'No projects match your search.'}
-            </div>
-          ) : (
-            <ul className="dashboard-list">
-              {filteredProjects.map(project => (
-                <li key={project.slug} className="dashboard-project">
-                  <div>
-                    <div className="button-row" style={{ justifyContent: 'flex-start' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{project.title}</h3>
-                      <span className="status-pill">
-                        {project.status === 'draft' ? 'Draft' : project.status === 'cast' ? 'In review' : 'Published'}
-                      </span>
-                    </div>
-                    {project.summary ? (
-                      <p className="section-subtitle" style={{ marginTop: '0.5rem' }}>
-                        {project.summary}
-                      </p>
-                    ) : null}
-                    <div className="dashboard-project__meta">
-                      <span>{project.assets.length} assets</span>
-                      <span>Updated {formatDate(project.updatedAt)}</span>
-                      <span>{project.caseStudyContent?.overview ? 'Narrative ready' : 'Needs narrative'}</span>
-                    </div>
-                    {project.tags.length > 0 ? (
-                      <div className="dashboard-project__tags">
-                        {project.tags.slice(0, 5).map(tag => (
-                          <span key={tag} className="dashboard-project__tag">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="button-row" style={{ justifyContent: 'flex-start' }}>
-                    <Button
-                      as={Link}
-                      to={`/editor/${project.slug}`}
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<FileText width={16} height={16} />}
-                    >
-                      Case study
-                    </Button>
-                    <Button
-                      onClick={() => handleExport(project)}
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<Download width={16} height={16} />}
-                    >
-                      Export
-                    </Button>
-                    <Button
-                      onClick={() => handleDelete(project.slug)}
-                      variant="danger"
-                      size="sm"
-                      leftIcon={<Trash2 width={16} height={16} />}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="dashboard-workflow">
-          <h3 className="section-title" style={{ marginBottom: '0.75rem' }}>
-            Workflow tips
-          </h3>
-          <ol>
-            <li>Capture a project through the intake to gather narrative hooks and assets.</li>
-            <li>Use the case study editor to refine copy, upload visuals, and generate AI narratives.</li>
-            <li>Arrange your highlights in the portfolio editor before sharing or exporting.</li>
-          </ol>
-        </section>
-      </main>
+          <PortfolioProjectsCard
+            projects={filteredProjects}
+            totalProjects={projects.length}
+            stats={stats}
+            storageUsage={storageUsage}
+            onImportClick={() => fileInputRef.current?.click()}
+            onExportAll={() => downloadJson('portfolio-projects.json', projects)}
+            onExportProject={handleExport}
+            onDeleteProject={handleDelete}
+            fileInputRef={fileInputRef}
+            onImportChange={handleImport}
+            isImporting={isImporting}
+            searchQuery={searchQuery}
+            isLoading={isLoading}
+          />
+        </main>
+      </div>
     </div>
   )
 }

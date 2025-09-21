@@ -5,9 +5,13 @@
 
 # Resolve project paths
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_DIR="$PROJECT_ROOT"
-if [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
+
+if [ -f "$PROJECT_ROOT/apps/web/package.json" ]; then
+    FRONTEND_DIR="$PROJECT_ROOT/apps/web"
+elif [ -f "$PROJECT_ROOT/portfolio-intake/package.json" ]; then
     FRONTEND_DIR="$PROJECT_ROOT/portfolio-intake"
+else
+    FRONTEND_DIR="$PROJECT_ROOT"
 fi
 FRONTEND_NAME="$(basename "$FRONTEND_DIR")"
 
