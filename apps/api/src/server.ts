@@ -30,6 +30,8 @@ export const buildServer = async () => {
   await server.register(templatesRoute, { prefix: '/templates' });
   await server.register(exportRoute, { prefix: '/export' });
 
+  await server.ready();
+
   return server;
 };
 
