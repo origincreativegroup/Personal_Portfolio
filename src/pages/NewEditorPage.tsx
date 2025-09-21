@@ -18,6 +18,7 @@ import { loadProject, saveProject } from '../utils/storageManager'
 import { buildCaseStudyDocument, buildDefaultCaseStudyContent } from '../utils/simpleCaseStudy'
 import { generateCaseStudyNarrative } from '../utils/aiNarrative'
 import { useApp } from '../contexts/AppContext'
+import { useLogger, useUserActionTracker, usePerformanceTracker } from '../hooks/useLogger'
 
 const createAssetFromFile = (file: File): Promise<ProjectAsset> =>
   new Promise((resolve, reject) => {
@@ -73,6 +74,15 @@ const NewEditorPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>()
   const { addNotification } = useApp()
 
+  // Logging and tracking hooks
+  const { info, warn, error, startTimer, endTimer } = useLogger({
+    component: 'NewEditorPage',
+    enableLifecycleTracking: true,
+    enablePerformanceTracking: true
+  })
+  const { trackClick, trackSubmit, trackFileUpload, trackError } = useUserActionTracker('NewEditorPage')
+  const { trackRenderTime, trackAsyncOperation } = usePerformanceTracker('NewEditorPage')
+
   const [project, setProject] = useState<ProjectMeta | null>(null)
   const [caseStudy, setCaseStudy] = useState<CaseStudyContent | null>(null)
   const [summary, setSummary] = useState('')
@@ -93,20 +103,43 @@ const NewEditorPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!projectId) {
+        warn('NewEditorPage loaded without projectId', 'ui', { projectId })
         return
       }
-      const existing = await loadProject(projectId)
-      if (existing) {
-        setProject(existing)
-      } else {
-        const created = newProject(projectId)
-        created.slug = projectId
-        created.title = projectId
-        setProject(created)
+
+      info('Loading project for editing', 'storage', { projectId })
+      startTimer('project_load')
+
+      try {
+        const existing = await trackAsyncOperation('loadProject', () => loadProject(projectId))
+        if (existing) {
+          info('Existing project loaded successfully', 'storage', {
+            projectId,
+            projectTitle: existing.title,
+            hasAssets: (existing.assets?.length || 0) > 0,
+            hasContent: !!existing.caseStudyContent
+          })
+          setProject(existing)
+        } else {
+          info('Creating new project', 'storage', { projectId })
+          const created = newProject(projectId)
+          created.slug = projectId
+          created.title = projectId
+          setProject(created)
+        }
+      } catch (err) {
+        const errorObj = err instanceof Error ? err : new Error(String(err))
+        trackError(errorObj, 'storage', { operation: 'loadProject', projectId })
+        error('Failed to load project', 'storage', {
+          projectId,
+          error: errorObj.message
+        })
+      } finally {
+        endTimer('project_load', 'performance')
       }
     }
     void load()
-  }, [projectId])
+  }, [projectId, info, warn, error, startTimer, endTimer, trackAsyncOperation, trackError])
 
   useEffect(() => {
     if (!project) {
@@ -156,13 +189,42 @@ const NewEditorPage: React.FC = () => {
     if (files.length === 0) {
       return
     }
+
+    info('Starting asset upload', 'user-action', {
+      fileCount: files.length,
+      fileNames: files.map(f => f.name),
+      totalSize: files.reduce((sum, f) => sum + f.size, 0)
+    })
+
+    startTimer('asset_upload')
+
     try {
-      const uploaded = await Promise.all(files.map(createAssetFromFile))
+      const uploaded = await trackAsyncOperation('processAssetFiles', () =>
+        Promise.all(files.map(createAssetFromFile))
+      )
+
       setAssets(previous => [...previous, ...uploaded])
       setStatusMessage(`Added ${uploaded.length} asset${uploaded.length === 1 ? '' : 's'}.`)
-    } catch (error) {
-      console.error('Failed to process asset', error)
+
+      // Track individual file uploads
+      files.forEach(file => {
+        trackFileUpload(file.name, file.size, file.type)
+      })
+
+      info('Asset upload completed successfully', 'storage', {
+        uploadedCount: uploaded.length,
+        totalAssets: assets.length + uploaded.length
+      })
+    } catch (err) {
+      const errorObj = err instanceof Error ? err : new Error(String(err))
+      trackError(errorObj, 'storage', { operation: 'assetUpload', fileCount: files.length })
+      error('Failed to process assets', 'storage', {
+        error: errorObj.message,
+        fileCount: files.length
+      })
       setStatusMessage('Unable to read one of the files.')
+    } finally {
+      endTimer('asset_upload', 'performance')
     }
   }
 
@@ -277,9 +339,25 @@ const NewEditorPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!project) {
+      warn('Attempted to save without project', 'ui')
       return
     }
+
+    info('Starting case study save operation', 'user-action', {
+      projectId: project.slug,
+      hasAssets: assets.length > 0,
+      contentLength: {
+        summary: summary.length,
+        overview: overview.length,
+        problem: problem.length,
+        solution: solution.length
+      }
+    })
+
+    trackClick('save_case_study', 'save_button')
     setIsSaving(true)
+    startTimer('save_operation')
+
     try {
       const updatedCaseStudy: CaseStudyContent = {
         overview,
@@ -289,6 +367,7 @@ const NewEditorPage: React.FC = () => {
         learnings,
         callToAction: cta || undefined,
       }
+
       const nextProject: ProjectMeta = {
         ...project,
         summary: summary || undefined,
@@ -300,19 +379,35 @@ const NewEditorPage: React.FC = () => {
         updatedAt: new Date().toISOString(),
         caseStudyContent: updatedCaseStudy,
       }
+
       const doc = buildCaseStudyDocument(nextProject, updatedCaseStudy)
       nextProject.caseStudyHtml = doc.html
       nextProject.caseStudyCss = doc.css
-      await saveProject(nextProject)
+
+      await trackAsyncOperation('saveProject', () => saveProject(nextProject))
+
       setProject(nextProject)
       setCaseStudy(updatedCaseStudy)
       setStatusMessage('Case study saved locally.')
       addNotification('success', 'Case study saved locally.')
-    } catch (error) {
-      console.error('Failed to save case study', error)
+
+      info('Case study saved successfully', 'storage', {
+        projectId: project.slug,
+        assetCount: assets.length,
+        htmlLength: doc.html.length,
+        cssLength: doc.css.length
+      })
+    } catch (err) {
+      const errorObj = err instanceof Error ? err : new Error(String(err))
+      trackError(errorObj, 'storage', { operation: 'saveProject', projectId: project.slug })
+      error('Failed to save case study', 'storage', {
+        projectId: project.slug,
+        error: errorObj.message
+      })
       setStatusMessage('Save failed. Ensure storage is available and try again.')
     } finally {
       setIsSaving(false)
+      endTimer('save_operation', 'performance')
     }
   }
 

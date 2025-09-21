@@ -10,6 +10,28 @@
   --purple-950: #1e1b4b;
 }
 
+/* Drag over state */
+.enhanced-asset-manager.drag-over {
+  background: linear-gradient(45deg, rgba(139, 92, 246, 0.05), rgba(59, 130, 246, 0.05));
+}
+
+/* Group hover effects for asset cards */
+.enhanced-asset-manager .group:hover .opacity-0 {
+  opacity: 1;
+}
+
+/* Animated gradient background for upload button */
+.enhanced-asset-manager .bg-gradient-to-r {
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Ensure the enhanced asset manager takes full width within its container */
 .editor-page__card--assets .enhanced-asset-manager {
   width: 100%;

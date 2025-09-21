@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Button } from '../components/ui'
 import { buildPortfolioTemplate } from '../utils/portfolioTemplates'
 import { loadPortfolioDocument } from '../utils/portfolioStorage'
 import { listProjects } from '../utils/storageManager'
@@ -55,14 +56,13 @@ const PortfolioPage: React.FC = () => {
       <header className="portfolio-view__header">
         <div className="portfolio-view__header-inner">
           <div className="flex items-center gap-4">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => navigate('/dashboard')}
-              className="btn btn--outline"
+              leftIcon={<ArrowLeft size={16} />}
             >
-              <ArrowLeft width={16} height={16} />
               Dashboard
-            </button>
+            </Button>
             <div>
               <h1 className="section-title" style={{ color: '#fff' }}>Portfolio</h1>
               <p className="section-subtitle" style={{ color: 'rgba(226,232,240,0.7)' }}>
@@ -70,13 +70,14 @@ const PortfolioPage: React.FC = () => {
               </p>
             </div>
           </div>
-          <Link
+          <Button
+            as={Link}
             to="/portfolio/editor"
-            className="btn btn--primary"
+            variant="primary"
+            leftIcon={<Pencil size={16} />}
           >
-            <Pencil width={16} height={16} />
             Edit portfolio
-          </Link>
+          </Button>
         </div>
       </header>
 

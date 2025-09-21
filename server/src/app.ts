@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import analysisRoutes from './routes/analysis';
 import projectRoutes from './routes/projects';
 import intakeRoutes from './routes/intake';
+import loggingRoutes from './routes/logging';
 import ProjectSyncService from './services/projectSyncService';
 import ProjectIntakeService from './services/projectIntakeService';
 import { registerProjectSyncScheduler } from './jobs/projectSyncScheduler';
@@ -51,6 +52,7 @@ const upload = multer({
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/projects', projectRoutes(upload));
 app.use('/api/intake', intakeRoutes(upload));
+app.use('/api/logs', loggingRoutes());
 
 registerProjectSyncScheduler({
   service: projectSyncService,

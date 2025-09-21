@@ -4,6 +4,7 @@ import {
   Download,
   FileText,
   Folder,
+  FolderOpen,
   Layers,
   Plus,
   RefreshCw,
@@ -380,6 +381,9 @@ const DashboardPage: React.FC = () => {
           </div>
           <div className="button-row">
             <ThemeToggle />
+            <Button as={Link} to="/assets" variant="outline" leftIcon={<FolderOpen size={18} />}>
+              Manage Assets
+            </Button>
             <Button as={Link} to="/portfolio" variant="outline" leftIcon={<Layers size={18} />}>
               View portfolio
             </Button>

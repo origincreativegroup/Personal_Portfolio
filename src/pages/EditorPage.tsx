@@ -609,7 +609,7 @@ export default function EditorPage() {
             onAssetUpdate={handleAssetUpdate}
             onAssetRemove={handleAssetRemove}
             onAssetReorder={handleAssetReorder}
-            onHeroSelect={(assetId) => handleProjectUpdate({ cover: assetId })}
+            onHeroSelect={(assetId) => handleProjectUpdate({ cover: assetId || undefined })}
             onAssetUpload={handleAssetUpload}
             isDarkMode={false}
           />
