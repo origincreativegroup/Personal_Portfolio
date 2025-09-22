@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portfolioforge.dev/schemas/ui-component.json",
+  "title": "UI Component",
+  "description": "Schema for PortfolioForge UI components with design token compliance",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Component name",
+      "pattern": "^[A-Z][a-zA-Z0-9]*$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Component description",
+      "maxLength": 500
+    },
+    "category": {
+      "type": "string",
+      "enum": ["primitive", "composite", "layout", "navigation", "feedback", "editor"],
+      "description": "Component category"
+    },
+    "props": {
+      "type": "object",
+      "description": "Component props schema",
+      "additionalProperties": {
+        "$ref": "#/$defs/PropDefinition"
+      }
+    },
+    "variants": {
+      "type": "object",
+      "description": "Component variants",
+      "additionalProperties": {
+        "$ref": "#/$defs/Variant"
+      }
+    },
+    "designTokens": {
+      "type": "object",
+      "description": "Design tokens used by component",
+      "properties": {
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesignToken"
+          }
+        },
+        "spacing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesignToken"
+          }
+        },
+        "typography": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesignToken"
+          }
+        },
+        "radius": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesignToken"
+          }
+        }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "description": "Accessibility features",
+      "properties": {
+        "keyboardNavigation": {
+          "type": "boolean"
+        },
+        "screenReaderSupport": {
+          "type": "boolean"
+        },
+        "focusManagement": {
+          "type": "boolean"
+        },
+        "ariaLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Example"
+      },
+      "description": "Usage examples"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Component version"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "stable", "deprecated"],
+      "description": "Component development status"
+    }
+  },
+  "required": ["name", "description", "category", "version", "status"],
+  "$defs": {
+    "PropDefinition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "object", "array", "function", "ReactNode"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "defaultValue": {
+          "description": "Default prop value"
+        },
+        "description": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "description": "Allowed values for enum-like props"
+        }
+      },
+      "required": ["type", "description"]
+    },
+    "Variant": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "props": {
+          "type": "object",
+          "description": "Props specific to this variant"
+        },
+        "designTokens": {
+          "type": "object",
+          "description": "Design tokens for this variant"
+        }
+      },
+      "required": ["name", "description"]
+    },
+    "DesignToken": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Token name"
+        },
+        "value": {
+          "type": "string",
+          "description": "Token value"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["color", "spacing", "typography", "radius", "shadow", "border"]
+        },
+        "compliance": {
+          "type": "object",
+          "properties": {
+            "approved": {
+              "type": "boolean",
+              "description": "Whether token is approved for use"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for approval/rejection"
+            }
+          },
+          "required": ["approved"]
+        }
+      },
+      "required": ["name", "value", "category", "compliance"]
+    },
+    "Example": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Example name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Example description"
+        },
+        "code": {
+          "type": "string",
+          "description": "Example code"
+        },
+        "props": {
+          "type": "object",
+          "description": "Example props"
+        }
+      },
+      "required": ["name", "description", "code"]
+    }
+  }
+}

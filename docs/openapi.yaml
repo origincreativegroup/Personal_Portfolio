@@ -1,0 +1,900 @@
+openapi: 3.0.3
+info:
+  title: PortfolioForge API
+  description: |
+    PortfolioForge Backend API for portfolio project management and AI-powered content analysis.
+
+    ## Features
+    - Project CRUD operations with assets and deliverables
+    - File upload and management
+    - AI-powered project analysis and narrative generation
+    - Executive summary generation
+    - File content analysis
+
+    ## Authentication
+    Currently operates without authentication for development. Production will implement JWT-based auth.
+
+  version: 1.0.0
+  contact:
+    name: PortfolioForge Team
+    url: https://github.com/portfolioforge
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001
+    description: Development server
+  - url: https://api.portfolioforge.dev
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns server health status and timestamp
+      operationId: healthCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-09-21T12:00:00.000Z"
+
+  /api/projects:
+    get:
+      summary: List all projects
+      description: Retrieve all portfolio projects with their assets and deliverables
+      operationId: listProjects
+      tags:
+        - Projects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new project
+      description: Create a new portfolio project
+      operationId: createProject
+      tags:
+        - Projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '200':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/projects/{id}:
+    get:
+      summary: Get project by ID
+      description: Retrieve a specific project with all related data
+      operationId: getProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/ProjectWithAnalysis'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update project
+      description: Update an existing project
+      operationId: updateProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete project
+      description: Delete a project and all related data
+      operationId: deleteProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Project deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/projects/{id}/analysis:
+    get:
+      summary: Get project analysis
+      description: Retrieve AI analysis results for a project
+      operationId: getProjectAnalysis
+      tags:
+        - Projects
+        - AI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Project analysis data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/ProjectAnalysis'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/upload:
+    post:
+      summary: Upload file
+      description: Upload a file to the server
+      operationId: uploadFile
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file:
+                    $ref: '#/components/schemas/FileInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/ai/analyze-project:
+    post:
+      summary: Analyze project with AI
+      description: Use AI to analyze project content and generate insights
+      operationId: analyzeProject
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectAnalysisRequest'
+      responses:
+        '200':
+          description: Project analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/ProjectAnalysisResult'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/ai/generate-narrative:
+    post:
+      summary: Generate narrative
+      description: Generate a narrative text based on project hooks
+      operationId: generateNarrative
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NarrativeRequest'
+      responses:
+        '200':
+          description: Narrative generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  narrative:
+                    type: string
+                    description: Generated narrative text
+                    example: "This project transformed the user experience..."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/ai/analyze-file:
+    post:
+      summary: Analyze uploaded file
+      description: Use AI to analyze and extract insights from an uploaded file
+      operationId: analyzeFile
+      tags:
+        - AI
+        - Files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to analyze
+      responses:
+        '200':
+          description: File analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/FileAnalysisResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/ai/executive-summary:
+    post:
+      summary: Generate executive summary
+      description: Generate an executive summary from provided content
+      operationId: generateExecutiveSummary
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: Content to summarize
+                  example: "This project involved redesigning the entire user interface..."
+              required:
+                - content
+      responses:
+        '200':
+          description: Executive summary generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: string
+                    description: Generated executive summary
+                    example: "Key achievements include 40% improvement in user engagement..."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique project identifier
+          example: "clm123abc456"
+        title:
+          type: string
+          description: Project title
+          example: "E-commerce Platform Redesign"
+        slug:
+          type: string
+          description: URL-friendly project identifier
+          example: "ecommerce-platform-redesign"
+        description:
+          type: string
+          nullable: true
+          description: Project description
+          example: "Complete UX overhaul of the main shopping platform"
+        status:
+          type: string
+          enum: [draft, published, archived]
+          description: Project status
+          example: "published"
+        category:
+          type: string
+          nullable: true
+          description: Project category
+          example: "UX Design"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Project tags
+          example: ["E-commerce", "UX Design", "React"]
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2024-09-21T12:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-09-21T12:00:00.000Z"
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+          description: Project assets
+        deliverables:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deliverable'
+          description: Project deliverables
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectFile'
+          description: Project files
+
+    ProjectWithAnalysis:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            analysis:
+              $ref: '#/components/schemas/ProjectAnalysis'
+              nullable: true
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Asset ID
+          example: "asset_123"
+        filename:
+          type: string
+          description: Original filename
+          example: "screenshot.png"
+        url:
+          type: string
+          description: Asset URL
+          example: "/uploads/screenshot.png"
+        type:
+          type: string
+          description: Asset type
+          example: "image"
+        size:
+          type: integer
+          description: File size in bytes
+          example: 1024000
+
+    Deliverable:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Deliverable ID
+          example: "deliv_123"
+        name:
+          type: string
+          description: Deliverable name
+          example: "Final Design System"
+        description:
+          type: string
+          nullable: true
+          description: Deliverable description
+          example: "Complete design system with components"
+
+    ProjectFile:
+      type: object
+      properties:
+        id:
+          type: string
+          description: File ID
+          example: "file_123"
+        filename:
+          type: string
+          description: Original filename
+          example: "requirements.pdf"
+        path:
+          type: string
+          description: File path
+          example: "/uploads/requirements.pdf"
+        mimeType:
+          type: string
+          description: MIME type
+          example: "application/pdf"
+
+    ProjectAnalysis:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Analysis ID
+          example: "analysis_123"
+        projectId:
+          type: string
+          description: Associated project ID
+          example: "clm123abc456"
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+          description: Analysis status
+          example: "completed"
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Overall confidence score
+          example: 0.85
+        primaryProblem:
+          type: string
+          description: Primary problem identified
+          example: "Low conversion rates on product pages"
+        problemConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.9
+        primarySolution:
+          type: string
+          description: Primary solution implemented
+          example: "Redesigned checkout flow with simplified steps"
+        solutionConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.8
+        primaryImpact:
+          type: string
+          description: Primary impact achieved
+          example: "40% increase in conversion rates"
+        impactConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        story:
+          type: string
+          description: Project story narrative
+          example: "This project began when we noticed..."
+        challenges:
+          type: string
+          description: Comma-separated list of challenges
+          example: "Legacy codebase,Time constraints,Budget limitations"
+        process:
+          type: string
+          description: Comma-separated list of process steps
+          example: "Research,Design,Development,Testing"
+        designPatterns:
+          type: string
+          description: Comma-separated list of design patterns used
+          example: "Mobile-first,Progressive disclosure,Card-based layout"
+        businessValue:
+          type: string
+          description: Business value description
+          example: "Increased revenue by $500K annually"
+        metrics:
+          type: string
+          description: Key metrics and results
+          example: "40% conversion increase, 60% faster load times"
+        suggestedTitle:
+          type: string
+          description: AI-suggested project title
+          example: "E-commerce Conversion Optimization"
+        suggestedCategory:
+          type: string
+          description: AI-suggested category
+          example: "UX Design"
+        suggestedTags:
+          type: string
+          description: Comma-separated AI-suggested tags
+          example: "E-commerce,UX,Conversion,Optimization"
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Project title
+          example: "New Portfolio Project"
+        slug:
+          type: string
+          description: URL-friendly identifier (auto-generated if not provided)
+          example: "new-portfolio-project"
+        description:
+          type: string
+          description: Project description
+          example: "This is a new project for my portfolio"
+        category:
+          type: string
+          description: Project category
+          example: "Web Design"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Project tags
+          example: ["React", "TypeScript", "Design"]
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Project title
+          example: "Updated Project Title"
+        description:
+          type: string
+          description: Project description
+          example: "Updated project description"
+        status:
+          type: string
+          enum: [draft, published, archived]
+          description: Project status
+          example: "published"
+        category:
+          type: string
+          description: Project category
+          example: "UX Design"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Project tags
+          example: ["UX", "Design", "Research"]
+
+    ProjectAnalysisRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          description: Project ID (optional, for saving results)
+          example: "clm123abc456"
+        title:
+          type: string
+          description: Project title
+          example: "E-commerce Platform Redesign"
+        description:
+          type: string
+          description: Project description
+          example: "Complete redesign of the shopping experience"
+        files:
+          type: array
+          items:
+            type: string
+          description: File contents or descriptions
+          example: ["User research findings", "Design mockups", "Performance metrics"]
+        context:
+          type: string
+          description: Additional context
+          example: "B2B e-commerce platform with 10k+ daily users"
+
+    ProjectAnalysisResult:
+      type: object
+      properties:
+        primaryProblem:
+          type: string
+          description: Main problem identified
+          example: "High cart abandonment rates"
+        problemConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.9
+        primarySolution:
+          type: string
+          description: Main solution implemented
+          example: "Streamlined checkout process"
+        solutionConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        primaryImpact:
+          type: string
+          description: Main impact achieved
+          example: "35% reduction in cart abandonment"
+        impactConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.8
+        story:
+          type: string
+          description: Generated project narrative
+          example: "This project addressed critical user experience issues..."
+        challenges:
+          type: array
+          items:
+            type: string
+          description: Project challenges
+          example: ["Legacy system integration", "Tight deadlines"]
+        process:
+          type: array
+          items:
+            type: string
+          description: Process steps
+          example: ["User research", "Prototyping", "A/B testing"]
+        designPatterns:
+          type: array
+          items:
+            type: string
+          description: Design patterns used
+          example: ["Progressive disclosure", "Card-based layout"]
+        businessValue:
+          type: string
+          description: Business value description
+          example: "Increased revenue by $2M annually"
+        metrics:
+          type: string
+          description: Key performance metrics
+          example: "35% higher conversion, 50% faster checkout"
+        suggestedTitle:
+          type: string
+          description: AI-suggested title
+          example: "E-commerce Checkout Optimization"
+        suggestedCategory:
+          type: string
+          description: AI-suggested category
+          example: "UX Design"
+        suggestedTags:
+          type: array
+          items:
+            type: string
+          description: AI-suggested tags
+          example: ["E-commerce", "UX", "Conversion"]
+
+    NarrativeRequest:
+      type: object
+      required:
+        - narrativeHooks
+      properties:
+        narrativeHooks:
+          $ref: '#/components/schemas/NarrativeHooks'
+        tone:
+          type: string
+          enum: [professional, casual, technical]
+          description: Narrative tone
+          example: "professional"
+
+    NarrativeHooks:
+      type: object
+      properties:
+        problemStatement:
+          type: string
+          description: The problem being solved
+          example: "Users struggled with a complex checkout process"
+        solutionApproach:
+          type: string
+          description: How the problem was approached
+          example: "We redesigned the checkout flow with user-centered design"
+        keyInsights:
+          type: array
+          items:
+            type: string
+          description: Key insights discovered
+          example: ["Mobile users dropped off at payment", "Form fields were confusing"]
+        impact:
+          type: string
+          description: The impact of the solution
+          example: "Conversion rates increased by 40%"
+        learnings:
+          type: string
+          description: What was learned
+          example: "Simplicity is key for mobile experiences"
+
+    FileInfo:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: Original filename
+          example: "document.pdf"
+        mimetype:
+          type: string
+          description: File MIME type
+          example: "application/pdf"
+        size:
+          type: integer
+          description: File size in bytes
+          example: 1024000
+
+    FileAnalysisResult:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: Analyzed filename
+          example: "requirements.pdf"
+        summary:
+          type: string
+          description: File content summary
+          example: "This document outlines the project requirements..."
+        keyPoints:
+          type: array
+          items:
+            type: string
+          description: Key points extracted
+          example: ["Must support mobile devices", "Integration with payment systems"]
+        suggestedActions:
+          type: array
+          items:
+            type: string
+          description: Suggested next actions
+          example: ["Create wireframes", "Research payment providers"]
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Analysis confidence score
+          example: 0.85
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid request parameters"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Project not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication (future implementation)
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Projects
+    description: Portfolio project management
+  - name: Files
+    description: File upload and management
+  - name: AI
+    description: AI-powered analysis and content generation

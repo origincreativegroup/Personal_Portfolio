@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "target": "ES2021",
+    "module": "ES2022",
+    "jsx": "react-jsx",
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "strict": true,
-    "esModuleInterop": true,
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@portfolioforge/schemas": ["packages/schemas/src"],
-      "@portfolioforge/ui": ["packages/ui/src"]
-    }
+    "resolveJsonModule": true,
+    "types": ["storybook__react"]
   },
-  "include": []
+  "include": ["src"]
 }

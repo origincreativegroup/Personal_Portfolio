@@ -1,0 +1,216 @@
+// ===== DATABASE MODELS =====
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  projects    Project[]
+  
+  @@map("users")
+}
+
+model Project {
+  id                String   @id @default(cuid())
+  userId            String?
+  slug              String   @unique
+  folder            String   @unique
+  title             String
+  summary           String?
+  description       String?
+  organization      String?
+  workType          String?
+  year              Int?
+  role              String?
+  seniority         String?
+  categories        String?  // Comma-separated string instead of array
+  skills            String?  // Comma-separated string instead of array
+  tools             String?  // Comma-separated string instead of array
+  tags              String?  // Comma-separated string instead of array
+  highlights        String?  // Comma-separated string instead of array
+  links             String?  // Simple string instead of JSON
+  nda               Boolean?
+  coverImage        String?
+  caseProblem       String?
+  caseActions       String?
+  caseResults       String?
+  schemaVersion     String?
+  metadataChecksum  String?
+  briefChecksum     String?
+  metadataUpdatedAt DateTime?
+  briefUpdatedAt    DateTime?
+  fsLastModified    DateTime?
+  lastSyncedAt      DateTime?
+  syncStatus        String   @default("clean")
+  syncWarnings      String?  // Simple string instead of JSON
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets            ProjectAsset[]
+  deliverables      ProjectDeliverable[]
+  files             ProjectFile[]
+  analysis          ProjectAnalysis?
+
+  @@map("projects")
+}
+
+model ProjectAsset {
+  id             String   @id @default(cuid())
+  projectId      String?
+  name           String
+  relativePath   String
+  label          String?
+  type           String
+  size           Int?
+  mimeType       String
+  dataUrl        String
+  thumbnailUrl   String?
+  addedAt        String
+  description    String?
+  tags           String?  // JSON string of array
+  folder         String?
+  featured       Boolean  @default(false)
+  visibility     String   @default("public") // 'public' | 'private'
+  isHero         Boolean  @default(false)
+  width          Int?
+  height         Int?
+  duration       Float?   // for videos/audio in seconds
+  checksum       String?
+  lastModifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relativePath])
+  @@map("project_assets")
+}
+
+model AssetFolder {
+  id          String   @id @default(cuid())
+  name        String
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent      AssetFolder? @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    AssetFolder[] @relation("FolderHierarchy")
+
+  @@map("asset_folders")
+}
+
+model ProjectDeliverable {
+  id             String   @id @default(cuid())
+  projectId      String
+  relativePath   String
+  label          String?
+  format         String?
+  size           Int?
+  checksum       String?
+  lastModifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relativePath])
+  @@map("project_deliverables")
+}
+
+model ProjectFile {
+  id           String   @id @default(cuid())
+  name         String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  thumbnailUrl String?
+  description  String?
+  tags         String?  // Comma-separated string instead of array
+  featured     Boolean  @default(false)
+  order        Int      @default(0)
+  projectId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis     FileAnalysis?
+  
+  @@map("project_files")
+}
+
+model ProjectAnalysis {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  status           String   @default("pending") // pending, analyzing, completed, failed
+  confidence       Float?
+  processingTime   Float?
+  filesAnalyzed    Int      @default(0)
+  insightsFound    Int      @default(0)
+  
+  // Problem Analysis
+  primaryProblem   String?
+  problemConfidence Float?
+  problemEvidence  String?  // Simple string instead of JSON
+  problemAlternatives String?  // Simple string instead of JSON
+  
+  // Solution Analysis  
+  primarySolution  String?
+  solutionConfidence Float?
+  solutionElements String?  // Simple string instead of JSON
+  designPatterns   String?  // Comma-separated string instead of array
+  
+  // Impact Analysis
+  primaryImpact    String?
+  impactConfidence Float?
+  metrics          String?  // Simple string instead of JSON
+  businessValue    String?
+  
+  // Narrative
+  story           String?
+  challenges      String?  // Comma-separated string instead of array
+  process         String?  // Comma-separated string instead of array
+  
+  // Suggestions
+  suggestedTitle   String?
+  suggestedCategory String?
+  suggestedTags    String?  // Comma-separated string instead of array
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("project_analyses")
+}
+
+model FileAnalysis {
+  id           String   @id @default(cuid())
+  fileId       String   @unique
+  status       String   @default("pending")
+  contentType  String?
+  insights     String?  // Simple string instead of JSON
+  extractedText String?
+  metadata     String?  // Simple string instead of JSON
+  processingTime Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  @@map("file_analyses")
+}

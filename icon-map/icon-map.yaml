@@ -1,0 +1,140 @@
+icons:
+  - name: Creations
+    category: Navigation
+    prompt: "Flat vector icon of a polished cube sitting on an anvil, royal purple (#5a3cf4) accent, lavender highlights, clean geometry, white background, no shadows."
+
+  - name: Molds
+    category: Navigation
+    prompt: "Minimal vector line art of a two-part casting mold slightly separated, lavender (#cbc0ff) highlights, royal purple outline, white background, flat style."
+
+  - name: Casts
+    category: Navigation
+    prompt: "Vector icon of molten metal stream in royal purple (#5a3cf4) pouring into a mold, clean modular geometry, white background, lavender sparks."
+
+  - name: Reforgings
+    category: Navigation
+    prompt: "Flat vector hammer striking a spark off an anvil, hammer in royal purple (#5a3cf4), spark in lavender (#cbc0ff), pure white background, minimal geometric lines."
+
+  - name: Dashboard
+    category: Dashboard
+    prompt: "Geometric forge flame rising from inside an anvil, flat vector, royal purple with lavender glow, white background, no gradients."
+
+  - name: Profile
+    category: Dashboard
+    prompt: "Minimal vector mask/helmet shape symbolizing crafted identity, flat purple and lavender linework, geometric, white background."
+
+  - name: Resume Generator
+    category: Dashboard
+    prompt: "Vector parchment scroll with a small forge spark in corner, royal purple accent, flat lavender highlight, modular clean geometry."
+
+  - name: Analytics
+    category: Dashboard
+    prompt: "Flat vector icon of molten metal flowing into channels that form a bar graph, royal purple stream, lavender graph highlights, white background."
+
+  - name: Notifications
+    category: Dashboard
+    prompt: "Minimal bell icon with a single lavender spark above, flat vector, royal purple outline, pure white background."
+
+  - name: Settings
+    category: Dashboard
+    prompt: "Vector cogwheel forged from interlocking hammer shapes, flat style, royal purple with lavender accents, white background."
+
+  - name: Upload File
+    category: Project Management
+    prompt: "Flat vector ingot being dropped into a forge opening, royal purple ingot, lavender sparks, white background, clean geometric style."
+
+  - name: New Project
+    category: Project Management
+    prompt: "Minimal vector anvil awaiting metal, flat outline in royal purple, lavender highlight, pure white background."
+
+  - name: Add to Project
+    category: Project Management
+    prompt: "Flat vector icon of an ingot merging with a cube, royal purple main shapes, lavender accent lines, white background."
+
+  - name: Folder
+    category: Project Management
+    prompt: "Vector crate with forge stamp on the side, flat purple geometry with lavender highlights, modular clean style, white background."
+
+  - name: Image File
+    category: Project Management
+    prompt: "Minimal framed plate with a spark mark inside, royal purple outline, lavender spark accent, flat white background."
+
+  - name: Video File
+    category: Project Management
+    prompt: "Flat vector film strip with molten glow, royal purple outline, lavender play triangle, geometric, white background."
+
+  - name: Audio File
+    category: Project Management
+    prompt: "Minimal tuning fork emitting lavender sound waves, flat vector style, royal purple body, pure white background."
+
+  - name: Document File
+    category: Project Management
+    prompt: "Flat sheet of paper stamped with a small anvil symbol, royal purple outline, lavender accent, geometric clean style."
+
+  - name: Add Block
+    category: Editor
+    prompt: "Vector plus sign over a forge brick, flat purple and lavender lines, pure white background, clean geometry."
+
+  - name: Drag Block
+    category: Editor
+    prompt: "Minimal tongs gripping a square, flat vector, royal purple outline with lavender accent, white background."
+
+  - name: Text Block
+    category: Editor
+    prompt: "Vector quill with a spark tip, flat style, royal purple body, lavender spark, white background."
+
+  - name: Image Block
+    category: Editor
+    prompt: "Flat vector square frame with lavender highlight, royal purple outline, pure white background, modular style."
+
+  - name: Video Block
+    category: Editor
+    prompt: "Vector play button cast into a coin shape, flat purple geometry, lavender accent, white background."
+
+  - name: Code Block
+    category: Editor
+    prompt: "Minimal chisels forming angle brackets < >, flat purple and lavender lines, geometric clean style, white background."
+
+  - name: Free Tier
+    category: Account
+    prompt: "Plain anvil outline, flat royal purple geometry, white background, minimal."
+
+  - name: Tier 2
+    category: Account
+    prompt: "Flat vector anvil glowing lavender at the edges, royal purple body, pure white background."
+
+  - name: Tier 3
+    category: Account
+    prompt: "Full anvil with royal purple flame and lavender sparks rising, flat vector, geometric, white background."
+
+  - name: Admin Console
+    category: Admin
+    prompt: "Vector forge master’s hammer crossed with a cog, flat style, royal purple with lavender highlights, pure white background."
+
+  - name: Learning Matrix
+    category: Admin
+    prompt: "Geometric crystalline ingot branching like a neural lattice, flat royal purple with lavender highlights, clean vector on white."
+
+  - name: Subscriptions
+    category: Admin
+    prompt: "Flat coin stamped with forge insignia, royal purple outline, lavender accent details, white background."
+
+  - name: Success
+    category: Status
+    prompt: "Molten droplet cooling into a solid cube, flat vector, royal purple with lavender accent, geometric, white background."
+
+  - name: Error
+    category: Status
+    prompt: "Cracked ingot, flat royal purple with lavender highlight, white background, minimal."
+
+  - name: Loading
+    category: Status
+    prompt: "Rotating tongs encircling a glowing ember, flat lavender and royal purple lines, geometric clean style, white background."
+
+  - name: Search
+    category: Status
+    prompt: "Minimal monocle magnifying glass held by tongs, flat royal purple outline, lavender accent, white background."
+
+  - name: Filter
+    category: Status
+    prompt: "Flat sieve with molten sparks dripping through, royal purple body, lavender sparks, pure white background."

@@ -1,0 +1,34 @@
+{
+  "name": "@portfolioforge/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "lint": "tsc --noEmit",
+    "test": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx src/seed.ts",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.0",
+    "@fastify/multipart": "^8.0.0",
+    "@fastify/static": "^6.12.0",
+    "@prisma/client": "^5.7.0",
+    "fastify": "^4.24.3",
+    "openai": "^4.58.0",
+    "sharp": "^0.34.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "prisma": "^5.7.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.2.2",
+    "vitest": "^1.0.0"
+  }
+}

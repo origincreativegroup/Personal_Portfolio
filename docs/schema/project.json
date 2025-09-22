@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portfolioforge.dev/schemas/project.json",
+  "title": "Project",
+  "description": "A portfolio project with metadata, content, and analysis",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique project identifier",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Project title",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly project identifier",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "Project description",
+      "maxLength": 1000
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "archived"],
+      "description": "Project publication status"
+    },
+    "category": {
+      "type": ["string", "null"],
+      "description": "Project category",
+      "maxLength": 50
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "description": "Project tags for categorization",
+      "maxItems": 20
+    },
+    "content": {
+      "type": "object",
+      "description": "Project content blocks",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentBlock"
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Asset"
+      },
+      "description": "Project assets (images, videos, documents)"
+    },
+    "deliverables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Deliverable"
+      },
+      "description": "Project deliverables and outcomes"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Project performance metrics",
+      "properties": {
+        "views": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "likes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shares": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Project creation timestamp"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    }
+  },
+  "required": ["id", "title", "slug", "status", "createdAt", "updatedAt"],
+  "$defs": {
+    "ContentBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Block identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "image", "video", "gallery", "quote", "code", "divider"],
+          "description": "Block content type"
+        },
+        "data": {
+          "type": "object",
+          "description": "Block-specific data",
+          "additionalProperties": true
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block display order"
+        }
+      },
+      "required": ["id", "type", "data", "order"]
+    },
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Asset identifier"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Original filename"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Asset URL"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["image", "video", "document", "audio"],
+          "description": "Asset type"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "MIME type"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File size in bytes"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Asset metadata",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 0
+            },
+            "alt": {
+              "type": "string",
+              "description": "Alternative text for accessibility"
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "filename", "url", "type", "mimeType", "size", "createdAt"]
+    },
+    "Deliverable": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Deliverable identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Deliverable name"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Deliverable description"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["design", "prototype", "specification", "presentation", "report", "code"],
+          "description": "Deliverable type"
+        },
+        "url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Link to deliverable"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "type", "createdAt"]
+    }
+  }
+}
