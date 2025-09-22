@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portfolioforge.dev/schemas/analysis.json",
+  "title": "Project Analysis",
+  "description": "AI-generated analysis of a portfolio project",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Analysis identifier"
+    },
+    "projectId": {
+      "type": "string",
+      "description": "Associated project identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "processing", "completed", "failed"],
+      "description": "Analysis processing status"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Overall analysis confidence score"
+    },
+    "insights": {
+      "type": "object",
+      "description": "Analysis insights",
+      "properties": {
+        "primaryProblem": {
+          "$ref": "#/$defs/Insight"
+        },
+        "primarySolution": {
+          "$ref": "#/$defs/Insight"
+        },
+        "primaryImpact": {
+          "$ref": "#/$defs/Insight"
+        }
+      },
+      "required": ["primaryProblem", "primarySolution", "primaryImpact"]
+    },
+    "narrative": {
+      "type": "object",
+      "description": "Generated narrative content",
+      "properties": {
+        "story": {
+          "type": "string",
+          "description": "Main project story",
+          "maxLength": 5000
+        },
+        "challenges": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "Project challenges",
+          "maxItems": 10
+        },
+        "process": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "Process steps taken",
+          "maxItems": 15
+        },
+        "designPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": "Design patterns used",
+          "maxItems": 10
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Project performance metrics",
+      "properties": {
+        "businessValue": {
+          "type": "string",
+          "description": "Business value description",
+          "maxLength": 500
+        },
+        "keyMetrics": {
+          "type": "string",
+          "description": "Key performance indicators",
+          "maxLength": 500
+        },
+        "quantitativeResults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MetricResult"
+          },
+          "description": "Quantitative results"
+        }
+      }
+    },
+    "suggestions": {
+      "type": "object",
+      "description": "AI suggestions for improvement",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Suggested project title",
+          "maxLength": 100
+        },
+        "category": {
+          "type": "string",
+          "description": "Suggested category",
+          "maxLength": 50
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "description": "Suggested tags",
+          "maxItems": 20
+        },
+        "improvements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "Suggested improvements",
+          "maxItems": 10
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Analysis metadata",
+      "properties": {
+        "aiModel": {
+          "type": "string",
+          "description": "AI model used for analysis"
+        },
+        "version": {
+          "type": "string",
+          "description": "Analysis version"
+        },
+        "processingTime": {
+          "type": "number",
+          "description": "Processing time in seconds"
+        },
+        "tokensUsed": {
+          "type": "integer",
+          "description": "Number of AI tokens used"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Analysis creation timestamp"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    }
+  },
+  "required": ["id", "projectId", "status", "confidence", "createdAt", "updatedAt"],
+  "$defs": {
+    "Insight": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Insight description",
+          "maxLength": 1000
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score for this insight"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "Supporting evidence",
+          "maxItems": 5
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "description": "Related tags",
+          "maxItems": 10
+        }
+      },
+      "required": ["description", "confidence"]
+    },
+    "MetricResult": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Metric name",
+          "maxLength": 100
+        },
+        "value": {
+          "type": "string",
+          "description": "Metric value",
+          "maxLength": 50
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measurement",
+          "maxLength": 20
+        },
+        "change": {
+          "type": "object",
+          "description": "Change from baseline",
+          "properties": {
+            "percentage": {
+              "type": "number",
+              "description": "Percentage change"
+            },
+            "direction": {
+              "type": "string",
+              "enum": ["increase", "decrease", "neutral"],
+              "description": "Direction of change"
+            }
+          }
+        },
+        "context": {
+          "type": "string",
+          "description": "Additional context",
+          "maxLength": 200
+        }
+      },
+      "required": ["name", "value"]
+    }
+  }
+}

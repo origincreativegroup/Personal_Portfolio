@@ -1,26 +1,40 @@
 {
-  "name": "portfolioforge-monorepo",
+  "name": "portfolioforge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "npm@10.8.2",
-  "scripts": {
-    "start": "./start-macos.sh",
-    "dev": "concurrently -k \"npm run dev:api\" \"npm run dev:web\"",
-    "dev:api": "npm run dev --workspace @portfolioforge/api",
-    "dev:web": "npm run dev --workspace @portfolioforge/web",
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces",
-    "lint": "npm run lint --workspaces",
-    "seed": "npm run seed --workspace @portfolioforge/api"
-  },
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "frontend",
+    "backend",
+    "shared",
+    "src"
   ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace @portfolioforge/backend",
+    "dev:frontend": "npm run dev --workspace @portfolioforge/frontend",
+    "build": "npm run build --workspaces",
+    "build:ui": "npm run build --workspace @portfolioforge/ui",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "test": "npm run test --workspaces --if-present",
+    "storybook": "npm run storybook --workspace @portfolioforge/ui",
+    "build-storybook": "npm run build-storybook --workspace @portfolioforge/ui",
+    "schema:check": "node tools/schema-check.mjs",
+    "tokens:check": "node tools/tokens-check.mjs",
+    "docs:check": "node tools/ssot-refs.mjs",
+    "pr:bot": "tsx tools/pr-bot.ts",
+    "agent:run": "tsx tools/orchestrator.ts",
+    "agent:plan": "tsx tools/agent-plan.ts",
+    "db:migrate": "npm run db:migrate --workspace @portfolioforge/backend",
+    "db:seed": "npm run db:seed --workspace @portfolioforge/backend"
+  },
   "devDependencies": {
     "concurrently": "^9.0.1",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "tsx": "^4.7.0"
   }
 }

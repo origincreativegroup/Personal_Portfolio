@@ -5,13 +5,13 @@
 ## 🚀 One-Command Startup
 
 ```bash
-npm start
+./start-simplified-macos.sh
 ```
 
 That's it! This single command will:
 - ✅ Check your macOS system requirements
 - ✅ Install all dependencies automatically
-- ✅ Build the backend server
+- ✅ Set up the database with Prisma
 - ✅ Start both frontend and backend services
 - ✅ Open your default browser to the app
 - ✅ Provide beautiful colored terminal output
@@ -33,28 +33,25 @@ That's it! This single command will:
 git clone <your-repo-url>
 cd Personal_Portfolio
 
-# Run the setup - this installs everything and builds the backend
-npm run setup
-
-# Start the application
-npm start
+# Run the startup script - this installs everything and starts the services
+./start-simplified-macos.sh
 ```
 
 ## 🛠️ Available Commands
 
 ### Quick Commands
 ```bash
-npm start                    # 🚀 Start everything (recommended)
-npm run dev                  # Start frontend only
-npm run start:backend        # Start backend only
+./start-simplified-macos.sh  # 🚀 Start everything (recommended)
+npm run dev                  # Start both services using npm workspaces
+npm run dev:frontend         # Start frontend only
+npm run dev:backend          # Start backend only
 ```
 
 ### Setup & Build Commands
 ```bash
-npm run setup                # 🔧 First-time setup (install + build)
-npm run install:all          # Install frontend & backend dependencies
-npm run build:backend        # Build backend TypeScript → JavaScript
-npm run build:all            # Build both frontend and backend
+./start-simplified-macos.sh --clean  # 🔧 Clean install and start
+npm install                          # Install root dependencies only
+npm run build                        # Build both frontend and backend
 ```
 
 ### Maintenance Commands
@@ -71,12 +68,12 @@ npm run clean                # 🧹 Remove all node_modules and build files
 - 📊 **Progress tracking** with clear visual feedback
 
 ### Smart Process Management
-- 🔄 **Automatic port cleanup** - kills existing processes on ports 5173 & 3001
+- 🔄 **Automatic port cleanup** - kills existing processes on ports 3000 & 3001
 - 🏃‍♂️ **Background processes** managed with macOS-native tools
 - 📝 **Log file generation** in `logs/` directory
 
 ### Browser Integration
-- 🌐 **Auto-opens default browser** to http://localhost:5173
+- 🌐 **Auto-opens default browser** to http://localhost:3000
 - 🍎 **Uses macOS `open` command** for native browser launching
 
 ### Advanced Options
@@ -91,7 +88,7 @@ npm run clean                # 🧹 Remove all node_modules and build files
 
 Once running, access your application at:
 
-- **🎨 Frontend (Portfolio App):** http://localhost:5173
+- **🎨 Frontend (Portfolio App):** http://localhost:3000
 - **⚙️ Backend (API Server):** http://localhost:3001
 
 ## 📊 Monitoring & Logs
@@ -118,7 +115,7 @@ The startup script automatically monitors both services and will alert you if ei
 The script automatically handles this, but if you encounter issues:
 ```bash
 # Manual port cleanup
-lsof -ti:5173 | xargs kill -9    # Kill frontend
+lsof -ti:3000 | xargs kill -9    # Kill frontend
 lsof -ti:3001 | xargs kill -9    # Kill backend
 ```
 
@@ -167,7 +164,7 @@ npm run start:backend
 ### Check Service Status
 ```bash
 # Check if services are running
-lsof -i :5173    # Frontend
+lsof -i :3000    # Frontend
 lsof -i :3001    # Backend
 ```
 

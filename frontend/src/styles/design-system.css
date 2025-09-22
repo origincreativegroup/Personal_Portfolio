@@ -1,0 +1,239 @@
+/* Modern SaaS Design System */
+/* Based on 8px grid system with refined color palette */
+
+:root {
+  /* === COLORS === */
+  /* Primary - Forge Purple (from icon system) */
+  --color-primary-50: #f3f0ff;
+  --color-primary-100: #e9e5ff;
+  --color-primary-200: #d6ccff;
+  --color-primary-300: #cbc0ff; /* Lavender highlight from forge theme */
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #5a3cf4; /* Royal purple from forge theme */
+  --color-primary-600: #4c34d4;
+  --color-primary-700: #3e2bb4;
+  --color-primary-800: #312394;
+  --color-primary-900: #261a74;
+
+  /* Blue - macOS inspired (for folders and accents) */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa; /* Main folder color */
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+
+  /* Gray - Neutral scale */
+  --color-gray-50: #fafaf9;
+  --color-gray-100: #f5f5f4;
+  --color-gray-200: #e7e5e4;
+  --color-gray-300: #d6d3d1;
+  --color-gray-400: #a8a29e;
+  --color-gray-500: #78716c;
+  --color-gray-600: #57534e;
+  --color-gray-700: #44403c;
+  --color-gray-800: #292524;
+  --color-gray-900: #1c1917;
+
+  /* Semantic colors */
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+
+  /* === SPACING === */
+  /* 8px grid system */
+  --space-0: 0;
+  --space-1: 0.125rem; /* 2px */
+  --space-2: 0.25rem;  /* 4px */
+  --space-3: 0.375rem; /* 6px */
+  --space-4: 0.5rem;   /* 8px - base unit */
+  --space-5: 0.625rem; /* 10px */
+  --space-6: 0.75rem;  /* 12px */
+  --space-8: 1rem;     /* 16px */
+  --space-10: 1.25rem; /* 20px */
+  --space-12: 1.5rem;  /* 24px */
+  --space-16: 2rem;    /* 32px */
+  --space-20: 2.5rem;  /* 40px */
+  --space-24: 3rem;    /* 48px */
+  --space-32: 4rem;    /* 64px */
+  --space-40: 5rem;    /* 80px */
+  --space-48: 6rem;    /* 96px */
+  --space-56: 7rem;    /* 112px */
+  --space-64: 8rem;    /* 128px */
+
+  /* === TYPOGRAPHY === */
+  /* Font families */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+  /* Font sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+  --text-5xl: 3rem;      /* 48px */
+
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* === BORDERS === */
+  --border-width: 1px;
+  --border-width-2: 2px;
+
+  /* Border radius - macOS inspired */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-base: 0.375rem; /* 6px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;
+
+  /* === SHADOWS === */
+  /* Subtle elevation system */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* === TRANSITIONS === */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === Z-INDEX === */
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+
+  /* === LAYOUT === */
+  /* Container max widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+
+  /* Sidebar width */
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 64px;
+}
+
+/* === SEMANTIC TOKENS === */
+/* Light mode */
+:root:not(.dark) {
+  --color-background: var(--color-gray-50);
+  --color-surface: white;
+  --color-surface-secondary: var(--color-gray-100);
+  --color-surface-elevated: white;
+  --color-border: var(--color-gray-200);
+  --color-border-strong: var(--color-gray-300);
+
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-tertiary: var(--color-gray-500);
+  --color-text-inverse: white;
+
+  --color-interactive: var(--color-primary-500);
+  --color-interactive-hover: var(--color-primary-600);
+  --color-interactive-pressed: var(--color-primary-700);
+
+  /* Shadows with proper opacity for light mode */
+  --shadow-color: 0, 0, 0;
+  --drop-shadow: drop-shadow(0 1px 2px rgba(var(--shadow-color), 0.1));
+}
+
+/* Dark mode */
+.dark {
+  --color-background: var(--color-gray-900);
+  --color-surface: var(--color-gray-800);
+  --color-surface-secondary: var(--color-gray-700);
+  --color-surface-elevated: var(--color-gray-750);
+  --color-border: var(--color-gray-700);
+  --color-border-strong: var(--color-gray-600);
+
+  --color-text-primary: var(--color-gray-100);
+  --color-text-secondary: var(--color-gray-400);
+  --color-text-tertiary: var(--color-gray-500);
+  --color-text-inverse: var(--color-gray-900);
+
+  --color-interactive: var(--color-primary-400);
+  --color-interactive-hover: var(--color-primary-300);
+  --color-interactive-pressed: var(--color-primary-200);
+
+  /* Shadows with proper opacity for dark mode */
+  --shadow-color: 0, 0, 0;
+  --drop-shadow: drop-shadow(0 1px 2px rgba(var(--shadow-color), 0.3));
+
+  /* Gray-750 for elevated surfaces */
+  --color-gray-750: #2d2d2d;
+}
+
+/* === UTILITY CLASSES === */
+/* Spacing utilities */
+.space-y-1 > * + * { margin-top: var(--space-1); }
+.space-y-2 > * + * { margin-top: var(--space-2); }
+.space-y-3 > * + * { margin-top: var(--space-3); }
+.space-y-4 > * + * { margin-top: var(--space-4); }
+.space-y-6 > * + * { margin-top: var(--space-6); }
+.space-y-8 > * + * { margin-top: var(--space-8); }
+
+/* Text utilities */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+
+/* Interactive utilities */
+.interactive {
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.interactive:hover {
+  transform: translateY(-1px);
+}
+
+.interactive:active {
+  transform: translateY(0);
+}
+
+/* Focus ring for accessibility */
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-interactive);
+  outline-offset: 2px;
+}
